@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threadsにゃんせき</title>
+<meta name="description" content="あなたのThreads投稿を、まるっと分析。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%90%B1%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDF1E2; --card:#FBFDF5;
+    --sage:#8FB06A; --sage-deep:#6E9A4E; --sage-soft:#E4EED4;
+    --terra:#D68A5A; --terra-deep:#C0703F;
+    --brown:#5A5241; --text:#42473A; --muted:#96A085; --line:#DFE6D2;
+    --serif:'Shippori Mincho B1',serif;
+    --sans:'Zen Kaku Gothic New',-apple-system,'Hiragino Kaku Gothic ProN',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--sans);background:#DBE4CB;color:var(--text);line-height:1.8;-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 14px;}
+  .phone{max-width:400px;width:100%;background:var(--bg);border-radius:34px;overflow:hidden;
+    box-shadow:0 20px 55px rgba(75,64,56,.20);border:7px solid #fff;}
+  .hero{position:relative;height:200px;background:linear-gradient(135deg,#B7CE96,#8FB06A);}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .body{padding:26px 24px 30px;text-align:center;}
+  .kicker{font-size:10.5px;letter-spacing:.34em;color:var(--sage-deep);font-weight:700;}
+  h1{font-family:var(--serif);font-weight:700;font-size:28px;color:var(--brown);margin-top:8px;letter-spacing:.06em;}
+  .lead{font-size:13px;color:var(--muted);margin-top:10px;letter-spacing:.03em;}
+  .btn{display:inline-flex;align-items:center;gap:9px;margin-top:24px;background:var(--brown);color:#fff;
+    text-decoration:none;font-weight:700;font-size:15px;padding:15px 30px;border-radius:999px;letter-spacing:.04em;
+    box-shadow:0 8px 20px rgba(90,82,65,.28);transition:.15s;}
+  .btn:active{transform:scale(.97);}
+  .note{margin-top:18px;font-size:11.5px;color:var(--muted);background:var(--sage-soft);border-radius:12px;padding:12px 14px;text-align:left;line-height:1.7;}
+  .note b{color:var(--sage-deep);}
+  .foot{margin-top:20px;font-size:10px;color:var(--muted);letter-spacing:.06em;}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="hero"><img src="cats.png" alt="" onerror="this.style.display='none'"></div>
+    <div class="body">
+      <div class="kicker">T H R E A D S　A N A L Y T I C S</div>
+      <h1>Threadsにゃんせき</h1>
+      <p class="lead">あなたの発信を、まるっと分析。<br>まずはThreadsとつなげましょう🐾</p>
+
+      <a class="btn" href="/api/auth">🧵 Threadsでログイン</a>
+
+      <div class="note">
+        🔒 <b>安全のしくみ</b>：ログインするとThreadsが「許可していい？」と聞いてきます。許可すると、アプリの裏側が自動で接続情報を受け取ります。あなたがパスワードやトークンを入力する必要はありません。
+      </div>
+      <div class="foot">🐱 Threadsにゃんせき</div>
+    </div>
+  </div>
+</body>
+</html>

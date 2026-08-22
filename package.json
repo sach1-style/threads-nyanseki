@@ -1,0 +1,7 @@
+{
+  "name": "threads-nyanseki",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Threadsにゃんせき - 自分のThreads投稿を分析する個人用アプリ"
+}

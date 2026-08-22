@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Threadsにゃんせき｜イメージ図</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDF1E2;            /* ピスタチオがかった生成り */
+    --card:#FBFDF5;
+    --sage:#8FB06A;          /* ピスタチオグリーン（主役） */
+    --sage-deep:#6E9A4E;
+    --sage-soft:#E4EED4;
+    --terra:#D68A5A;         /* 猫色のアクセント（控えめ） */
+    --terra-deep:#C0703F;
+    --terra-soft:#F5E7D8;
+    --brown:#5A5241;
+    --text:#42473A;          /* ほんのり緑みの文字色 */
+    --muted:#96A085;
+    --line:#DFE6D2;
+    --serif:'Shippori Mincho B1',serif;
+    --sans:'Zen Kaku Gothic New',-apple-system,'Hiragino Kaku Gothic ProN',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{ font-family:var(--sans); background:#DBE4CB; color:var(--text); line-height:1.7;
+    padding:24px 12px 44px; -webkit-font-smoothing:antialiased; letter-spacing:.01em;}
+  .mock-note{max-width:400px;margin:0 auto 12px;text-align:center;font-size:11.5px;color:#8a8168;letter-spacing:.05em;}
+  .phone{ max-width:400px; margin:0 auto; background:var(--bg); border-radius:36px;
+    box-shadow:0 20px 55px rgba(75,64,56,.20); overflow:hidden; border:7px solid #fff;}
+  .scroll{padding:0 18px 30px;}
+
+  /* hero photo */
+  .hero{position:relative;height:190px;background:linear-gradient(135deg,#B7CE96,#8FB06A);overflow:hidden;}
+  .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .hero-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#fff;}
+  .hero-fallback .em{font-size:40px;letter-spacing:4px;}
+  .hero-fallback span{font-size:12px;letter-spacing:.08em;background:rgba(107,85,69,.35);padding:4px 12px;border-radius:999px;}
+
+  /* title */
+  .brand{text-align:center;padding:20px 16px 6px;}
+  .brand .kicker{font-size:10.5px;letter-spacing:.34em;color:var(--sage-deep);font-weight:700;}
+  .brand h1{font-family:var(--serif);font-weight:700;font-size:27px;color:var(--brown);margin-top:7px;letter-spacing:.06em;}
+  .brand p{font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.06em;}
+
+  /* period tabs */
+  .periods{display:flex;gap:7px;padding:16px 0 4px;}
+  .periods .pt{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:9px 0;border-radius:999px;
+    background:transparent;color:var(--muted);border:1px solid var(--line);letter-spacing:.04em;}
+  .periods .pt.on{background:var(--sage-deep);color:#fff;border-color:var(--sage-deep);}
+
+  /* section */
+  .sec{margin-top:26px;}
+  .sec-h{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--brown);margin:0 2px 12px;letter-spacing:.05em;display:flex;align-items:center;gap:8px;}
+  .sec-h .ln{flex:1;height:1px;background:var(--line);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:17px;}
+
+  /* KPI */
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px 16px;position:relative;overflow:hidden;}
+  .kpi .lab{font-size:10.5px;color:var(--muted);letter-spacing:.08em;font-weight:700;}
+  .kpi .val{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--brown);margin-top:3px;line-height:1.2;}
+  .kpi .val small{font-size:13px;color:var(--muted);}
+  .kpi .sub{font-size:10.5px;font-weight:700;margin-top:4px;letter-spacing:.02em;}
+  .up{color:var(--sage-deep);} .down{color:var(--terra-deep);}
+  .kpi.hl{background:linear-gradient(140deg,#9DBE72,#6E9A4E);border:none;}
+  .kpi.hl .lab,.kpi.hl .val,.kpi.hl .val small{color:#fff;}
+  .kpi.hl .sub{color:rgba(255,255,255,.92);}
+  .kpi .deco{position:absolute;right:-4px;bottom:-6px;font-size:30px;opacity:.16;}
+
+  /* bar chart */
+  .chart-title{font-size:11.5px;color:var(--muted);letter-spacing:.06em;margin-bottom:10px;font-weight:700;}
+  .bars{display:flex;align-items:flex-end;gap:9px;height:104px;}
+  .bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end;}
+  .bars .bar{width:100%;border-radius:6px 6px 2px 2px;}
+  .bars .bar.like{background:linear-gradient(var(--sage),var(--sage-deep));}
+  .bars .bar.view{background:linear-gradient(#E7BE95,#D68A5A);}
+  .bars .bar.best{outline:2px solid var(--terra-deep);outline-offset:1px;}
+  .bars .bv{font-size:9px;color:var(--muted);font-weight:700;}
+  .bars .bx{font-size:9.5px;color:var(--muted);}
+  .divider{height:1px;background:var(--line);margin:16px 0;}
+  .peak{font-size:11px;color:var(--terra-deep);font-weight:700;margin-top:10px;text-align:center;letter-spacing:.03em;}
+
+  /* line */
+  .line-cap{font-size:10.5px;color:var(--muted);margin-top:6px;text-align:center;letter-spacing:.04em;}
+  .legend{font-size:10.5px;color:var(--muted);display:flex;gap:14px;align-items:center;justify-content:center;margin-top:8px;}
+  .dotm{display:inline-block;width:9px;height:9px;border-radius:3px;vertical-align:middle;margin-right:5px;}
+
+  /* 反応の内訳（わかりやすく） */
+  .stack{display:flex;height:16px;border-radius:999px;overflow:hidden;margin-bottom:16px;}
+  .stack i{display:block;height:100%;}
+  .brk{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .brk:last-child{border-bottom:none;}
+  .brk .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .brk .nm{font-weight:700;font-size:13px;color:var(--brown);}
+  .brk .mean{font-size:10.5px;color:var(--muted);}
+  .brk .pc{margin-left:auto;text-align:right;}
+  .brk .pc b{font-family:var(--serif);font-size:17px;color:var(--brown);}
+  .brk .pc span{display:block;font-size:9.5px;color:var(--muted);}
+  .verdict{margin-top:14px;background:var(--sage-soft);border-radius:12px;padding:11px 13px;font-size:12px;color:var(--sage-deep);font-weight:700;letter-spacing:.02em;}
+
+  /* type compare */
+  .cmp{display:flex;gap:12px;}
+  .cmp .col{flex:1;text-align:center;background:var(--sage-soft);border-radius:14px;padding:14px 8px;}
+  .cmp .col.win{background:var(--terra-soft);}
+  .cmp .col .ic{font-size:22px;}
+  .cmp .col .t{font-size:11.5px;color:var(--brown);font-weight:700;margin-top:3px;letter-spacing:.03em;}
+  .cmp .col .n{font-family:var(--serif);font-size:21px;font-weight:700;color:var(--brown);margin-top:5px;}
+  .cmp .col .u{font-size:9.5px;color:var(--muted);}
+  .cmp .col .tag{display:inline-block;margin-top:7px;font-size:10px;font-weight:700;background:var(--terra);color:#fff;border-radius:999px;padding:2px 10px;letter-spacing:.03em;}
+
+  /* ranking */
+  .rk{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .rk:last-child{border-bottom:none;}
+  .rk .no{width:23px;height:23px;flex-shrink:0;border-radius:50%;background:var(--sage-soft);color:var(--sage-deep);font-family:var(--serif);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;}
+  .rk .no.top{background:var(--terra);color:#fff;}
+  .rk .tx{flex:1;min-width:0;}
+  .rk .tx .p{font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rk .tx .m{font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.03em;}
+  .rk .mult{font-size:11px;font-weight:700;color:var(--terra-deep);background:var(--terra-soft);border-radius:999px;padding:3px 9px;white-space:nowrap;}
+
+  /* keywords */
+  .kw{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .kw .k{border-radius:999px;padding:6px 13px;font-weight:700;color:var(--sage-deep);background:var(--sage-soft);letter-spacing:.02em;}
+  .kw .k.big{font-size:16px;background:var(--sage);color:#fff;}
+  .kw .k.mid{font-size:13px;}
+  .kw .k.sm{font-size:11.5px;}
+
+  /* advice */
+  .advice{background:linear-gradient(140deg,#EAF1DB,#DAE7C2);border-radius:18px;padding:16px;display:flex;gap:12px;align-items:flex-start;}
+  .advice .ac{font-size:26px;flex-shrink:0;}
+  .advice .at{font-size:12.5px;color:#4f5a3c;line-height:1.75;}
+  .advice .at b{color:var(--terra-deep);}
+
+  .foot{text-align:center;font-size:10px;color:var(--muted);margin-top:22px;letter-spacing:.08em;}
+</style>
+</head>
+<body>
+
+<div class="mock-note">※ これは「イメージ図」です（数字はすべてサンプル）🐱</div>
+
+<div class="phone">
+
+  <!-- hero photo -->
+  <div class="hero">
+    <img src="cats.png" alt="" onerror="this.style.display='none'">
+    <div class="hero-fallback">
+      <div class="em">🐱🐱</div>
+      <span>ここに2匹の写真が入ります（cats.jpg）</span>
+    </div>
+  </div>
+
+  <!-- title -->
+  <div class="brand">
+    <div class="kicker">T H R E A D S　A N A L Y T I C S</div>
+    <h1>Threadsにゃんせき</h1>
+    <p>あなたの発信を、まるっと分析。</p>
+  </div>
+
+  <div class="scroll">
+
+    <!-- 期間 -->
+    <div class="periods">
+      <div class="pt">直近1週間</div>
+      <div class="pt">直近30日</div>
+      <div class="pt on">全期間</div>
+    </div>
+
+    <!-- KPI -->
+    <div class="sec">
+      <div class="sec-h">サマリー<span class="ln"></span><span style="font-size:10.5px;color:var(--muted);font-weight:400;">全128投稿</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="lab">平均表示回数</div><div class="val">3,420</div><div class="sub up">▲ 先月比 +12%</div><div class="deco">👀</div></div>
+        <div class="kpi"><div class="lab">平均いいね</div><div class="val">86</div><div class="sub up">▲ +8%</div><div class="deco">❤️</div></div>
+        <div class="kpi"><div class="lab">平均エンゲージ</div><div class="val">112</div><div class="sub">反応の合計</div><div class="deco">💬</div></div>
+        <div class="kpi hl"><div class="lab">EG率（刺さり度）</div><div class="val">3.3<small>%</small></div><div class="sub">世間の目安 約2% ／ 好調です</div><div class="deco">🔥</div></div>
+      </div>
+    </div>
+
+    <!-- 時間帯別（いいね＆表示） -->
+    <div class="sec">
+      <div class="sec-h">時間帯別のパフォーマンス<span class="ln"></span></div>
+      <div class="card">
+        <div class="chart-title">🟩 平均いいね</div>
+        <div class="bars">
+          <div class="b"><div class="bv">32</div><div class="bar like" style="height:26%"></div><div class="bx">6時</div></div>
+          <div class="b"><div class="bv">58</div><div class="bar like" style="height:47%"></div><div class="bx">9時</div></div>
+          <div class="b"><div class="bv">71</div><div class="bar like" style="height:58%"></div><div class="bx">12時</div></div>
+          <div class="b"><div class="bv">64</div><div class="bar like" style="height:52%"></div><div class="bx">15時</div></div>
+          <div class="b"><div class="bv">98</div><div class="bar like" style="height:80%"></div><div class="bx">18時</div></div>
+          <div class="b"><div class="bv">124</div><div class="bar like best" style="height:100%"></div><div class="bx">21時</div></div>
+        </div>
+        <div class="divider"></div>
+        <div class="chart-title">🟧 平均表示回数</div>
+        <div class="bars">
+          <div class="b"><div class="bv">900</div><div class="bar view" style="height:26%"></div><div class="bx">6時</div></div>
+          <div class="b"><div class="bv">1.6k</div><div class="bar view" style="height:47%"></div><div class="bx">9時</div></div>
+          <div class="b"><div class="bv">2.1k</div><div class="bar view" style="height:62%"></div><div class="bx">12時</div></div>
+          <div class="b"><div class="bv">1.8k</div><div class="bar view" style="height:53%"></div><div class="bx">15時</div></div>
+          <div class="b"><div class="bv">2.6k</div><div class="bar view" style="height:76%"></div><div class="bx">18時</div></div>
+          <div class="b"><div class="bv">3.4k</div><div class="bar view best" style="height:100%"></div><div class="bx">21時</div></div>
+        </div>
+        <div class="peak">🐾 いいね・表示ともに「21時台」がいちばん伸びています</div>
+      </div>
+    </div>
+
+    <!-- 週ごと推移 -->
+    <div class="sec">
+      <div class="sec-h">週ごとの推移<span class="ln"></span></div>
+      <div class="card">
+        <svg viewBox="0 0 320 130" width="100%" height="130" preserveAspectRatio="none">
+          <line x1="0" y1="32" x2="320" y2="32" stroke="#EAE1D2" stroke-width="1"/>
+          <line x1="0" y1="65" x2="320" y2="65" stroke="#EAE1D2" stroke-width="1"/>
+          <line x1="0" y1="98" x2="320" y2="98" stroke="#EAE1D2" stroke-width="1"/>
+          <polyline points="10,92 62,86 114,78 166,68 218,54 270,43 310,31" fill="none" stroke="#D68A5A" stroke-width="2.5" stroke-linecap="round"/>
+          <polyline points="10,108 62,102 114,98 166,90 218,82 270,70 310,58" fill="none" stroke="#7C9866" stroke-width="3" stroke-linecap="round"/>
+          <g fill="#7C9866"><circle cx="10" cy="108" r="3"/><circle cx="114" cy="98" r="3"/><circle cx="218" cy="82" r="3"/><circle cx="310" cy="58" r="3.6"/></g>
+        </svg>
+        <div class="legend">
+          <span><span class="dotm" style="background:#7C9866"></span>平均いいね</span>
+          <span><span class="dotm" style="background:#D68A5A"></span>平均表示</span>
+        </div>
+        <div class="line-cap">右肩上がり＝発信の手ごたえUP（過去にさかのぼって表示）</div>
+      </div>
+    </div>
+
+    <!-- 反応の内訳（わかりやすく作り直し） -->
+    <div class="sec">
+      <div class="sec-h">反応の内訳<span class="ln"></span></div>
+      <div class="card">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:13px;letter-spacing:.03em;">
+          どんな反応が多い？＝あなたの投稿の“得意なこと”がわかります
+        </div>
+        <div class="stack">
+          <i style="width:58%;background:#7C9866"></i>
+          <i style="width:18%;background:#D68A5A"></i>
+          <i style="width:14%;background:#6B5545"></i>
+          <i style="width:10%;background:#C6D3AE"></i>
+        </div>
+        <div class="brk">
+          <div class="ic" style="background:var(--sage-soft)">❤️</div>
+          <div><div class="nm">いいね</div><div class="mean">共感された数</div></div>
+          <div class="pc"><b>58%</b><span>1,240件</span></div>
+        </div>
+        <div class="brk">
+          <div class="ic" style="background:var(--terra-soft)">💬</div>
+          <div><div class="nm">返信</div><div class="mean">会話が生まれた数</div></div>
+          <div class="pc"><b>18%</b><span>384件</span></div>
+        </div>
+        <div class="brk">
+          <div class="ic" style="background:#EDE6DD">🔁</div>
+          <div><div class="nm">リポスト</div><div class="mean">広めてもらえた数</div></div>
+          <div class="pc"><b>14%</b><span>298件</span></div>
+        </div>
+        <div class="brk">
+          <div class="ic" style="background:var(--sage-soft)">✍️</div>
+          <div><div class="nm">引用</div><div class="mean">語りたくなった数</div></div>
+          <div class="pc"><b>10%</b><span>212件</span></div>
+        </div>
+        <div class="verdict">🗣️ あなたは「返信＝会話が生まれる投稿」が得意なタイプ！</div>
+      </div>
+    </div>
+
+    <!-- 投稿タイプ別 -->
+    <div class="sec">
+      <div class="sec-h">投稿タイプ別の比較<span class="ln"></span></div>
+      <div class="cmp">
+        <div class="col"><div class="ic">📝</div><div class="t">文字だけ</div><div class="n">64</div><div class="u">平均いいね</div></div>
+        <div class="col win"><div class="ic">🖼️</div><div class="t">画像あり</div><div class="n">108</div><div class="u">平均いいね</div><div class="tag">1.7倍！</div></div>
+      </div>
+    </div>
+
+    <!-- ランキング -->
+    <div class="sec">
+      <div class="sec-h">ウケた投稿ランキング<span class="ln"></span></div>
+      <div class="card">
+        <div class="rk"><div class="no top">1</div><div class="tx"><div class="p">在宅ワークで疲れない働き方、3つの…</div><div class="m">👀 12,800 ・ ❤️ 540</div></div><div class="mult">平均×4.8</div></div>
+        <div class="rk"><div class="no top">2</div><div class="tx"><div class="p">小1の壁、私はこう乗り越えました</div><div class="m">👀 9,200 ・ ❤️ 410</div></div><div class="mult">平均×3.6</div></div>
+        <div class="rk"><div class="no">3</div><div class="tx"><div class="p">朝5分でできる、心を整える習慣</div><div class="m">👀 6,700 ・ ❤️ 280</div></div><div class="mult">平均×2.4</div></div>
+      </div>
+    </div>
+
+    <!-- キーワード -->
+    <div class="sec">
+      <div class="sec-h">伸びるキーワード・テーマ<span class="ln"></span></div>
+      <div class="card">
+        <div class="kw">
+          <span class="k big">働き方</span><span class="k mid">在宅</span><span class="k big">ママ</span>
+          <span class="k sm">習慣</span><span class="k mid">小1の壁</span><span class="k sm">暮らし</span><span class="k mid">心の整え方</span><span class="k sm">note</span>
+        </div>
+        <div class="line-cap" style="text-align:left;margin-top:12px;">大きい言葉ほど、反応が良いテーマ🐾</div>
+      </div>
+    </div>
+
+    <!-- アドバイス -->
+    <div class="sec">
+      <div class="sec-h">今日のひとことアドバイス<span class="ln"></span></div>
+      <div class="advice">
+        <div class="ac">😺</div>
+        <div class="at"><b>画像つきの投稿</b>が、文字だけより<b>1.7倍</b>伸びてるよ。そして<b>21時台</b>がいちばん反応◎。次は「働き方」テーマ × 画像 × 21時が狙い目にゃ🐾</div>
+      </div>
+    </div>
+
+    <div class="foot">🐱 Threadsにゃんせき ・ イメージ図（サンプル数値）</div>
+  </div>
+</div>
+
+</body>
+</html>
