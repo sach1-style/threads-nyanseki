@@ -13,46 +13,364 @@
   :root{
     --bg:#EDF1E2; --card:#FBFDF5;
     --sage:#8FB06A; --sage-deep:#6E9A4E; --sage-soft:#E4EED4;
-    --terra:#D68A5A; --terra-deep:#C0703F;
+    --terra:#D68A5A; --terra-deep:#C0703F; --terra-soft:#F5E7D8;
     --brown:#5A5241; --text:#42473A; --muted:#96A085; --line:#DFE6D2;
     --serif:'Shippori Mincho B1',serif;
     --sans:'Zen Kaku Gothic New',-apple-system,'Hiragino Kaku Gothic ProN',sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:var(--sans);background:#DBE4CB;color:var(--text);line-height:1.8;-webkit-font-smoothing:antialiased;
-    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px 14px;}
-  .phone{max-width:400px;width:100%;background:var(--bg);border-radius:34px;overflow:hidden;
-    box-shadow:0 20px 55px rgba(75,64,56,.20);border:7px solid #fff;}
-  .hero{position:relative;height:200px;background:linear-gradient(135deg,#B7CE96,#8FB06A);}
+  body{font-family:var(--sans);background:#DBE4CB;color:var(--text);line-height:1.7;-webkit-font-smoothing:antialiased;padding:20px 10px 50px;letter-spacing:.01em;}
+  .phone{max-width:420px;margin:0 auto;background:var(--bg);border-radius:34px;overflow:hidden;box-shadow:0 20px 55px rgba(75,64,56,.20);border:7px solid #fff;}
+  .scroll{padding:0 17px 30px;}
+
+  .hero{position:relative;height:170px;background:linear-gradient(135deg,#B7CE96,#8FB06A);}
   .hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-  .body{padding:26px 24px 30px;text-align:center;}
-  .kicker{font-size:10.5px;letter-spacing:.34em;color:var(--sage-deep);font-weight:700;}
-  h1{font-family:var(--serif);font-weight:700;font-size:28px;color:var(--brown);margin-top:8px;letter-spacing:.06em;}
-  .lead{font-size:13px;color:var(--muted);margin-top:10px;letter-spacing:.03em;}
-  .btn{display:inline-flex;align-items:center;gap:9px;margin-top:24px;background:var(--brown);color:#fff;
-    text-decoration:none;font-weight:700;font-size:15px;padding:15px 30px;border-radius:999px;letter-spacing:.04em;
-    box-shadow:0 8px 20px rgba(90,82,65,.28);transition:.15s;}
-  .btn:active{transform:scale(.97);}
-  .note{margin-top:18px;font-size:11.5px;color:var(--muted);background:var(--sage-soft);border-radius:12px;padding:12px 14px;text-align:left;line-height:1.7;}
-  .note b{color:var(--sage-deep);}
-  .foot{margin-top:20px;font-size:10px;color:var(--muted);letter-spacing:.06em;}
+  .brand{text-align:center;padding:18px 16px 4px;}
+  .brand .kicker{font-size:10px;letter-spacing:.32em;color:var(--sage-deep);font-weight:700;}
+  .brand h1{font-family:var(--serif);font-weight:700;font-size:25px;color:var(--brown);margin-top:6px;letter-spacing:.06em;}
+  .brand p{font-size:11.5px;color:var(--muted);margin-top:4px;}
+
+  .periods{display:flex;gap:7px;padding:14px 0 2px;}
+  .periods .pt{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:9px 0;border-radius:999px;background:transparent;color:var(--muted);border:1px solid var(--line);cursor:pointer;letter-spacing:.03em;}
+  .periods .pt.on{background:var(--sage-deep);color:#fff;border-color:var(--sage-deep);}
+
+  .sec{margin-top:24px;}
+  .sec-h{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--brown);margin:0 2px 11px;letter-spacing:.05em;display:flex;align-items:center;gap:8px;}
+  .sec-h .ln{flex:1;height:1px;background:var(--line);}
+  .sec-h .mini{font-size:10.5px;color:var(--muted);font-weight:400;font-family:var(--sans);}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;}
+
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 15px;position:relative;overflow:hidden;}
+  .kpi .lab{font-size:10.5px;color:var(--muted);letter-spacing:.06em;font-weight:700;}
+  .kpi .val{font-family:var(--serif);font-size:25px;font-weight:700;color:var(--brown);margin-top:3px;line-height:1.2;}
+  .kpi .val small{font-size:13px;color:var(--muted);}
+  .kpi .sub{font-size:10.5px;font-weight:700;margin-top:4px;}
+  .kpi.hl{background:linear-gradient(140deg,#9DBE72,#6E9A4E);border:none;}
+  .kpi.hl .lab,.kpi.hl .val,.kpi.hl .val small{color:#fff;}
+  .kpi.hl .sub{color:rgba(255,255,255,.92);}
+  .kpi .deco{position:absolute;right:-4px;bottom:-6px;font-size:30px;opacity:.16;}
+
+  .chart-title{font-size:11.5px;color:var(--muted);letter-spacing:.05em;margin-bottom:10px;font-weight:700;}
+  .bars{display:flex;align-items:flex-end;gap:7px;height:100px;}
+  .bars .b{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end;}
+  .bars .bar{width:100%;border-radius:6px 6px 2px 2px;min-height:2px;}
+  .bars .bar.like{background:linear-gradient(var(--sage),var(--sage-deep));}
+  .bars .bar.view{background:linear-gradient(#E7BE95,#D68A5A);}
+  .bars .bar.best{outline:2px solid var(--terra-deep);outline-offset:1px;}
+  .bars .bv{font-size:9px;color:var(--muted);font-weight:700;}
+  .bars .bx{font-size:9px;color:var(--muted);}
+  .divider{height:1px;background:var(--line);margin:15px 0;}
+  .peak{font-size:11px;color:var(--terra-deep);font-weight:700;margin-top:10px;text-align:center;}
+
+  .legend{font-size:10.5px;color:var(--muted);display:flex;gap:14px;align-items:center;justify-content:center;margin-top:8px;}
+  .dotm{display:inline-block;width:9px;height:9px;border-radius:3px;vertical-align:middle;margin-right:5px;}
+  .line-cap{font-size:10.5px;color:var(--muted);margin-top:6px;text-align:center;}
+
+  .stack{display:flex;height:16px;border-radius:999px;overflow:hidden;margin-bottom:15px;background:var(--line);}
+  .stack i{display:block;height:100%;}
+  .brk{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .brk:last-child{border-bottom:none;}
+  .brk .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+  .brk .nm{font-weight:700;font-size:13px;color:var(--brown);}
+  .brk .mean{font-size:10.5px;color:var(--muted);}
+  .brk .pc{margin-left:auto;text-align:right;}
+  .brk .pc b{font-family:var(--serif);font-size:17px;color:var(--brown);}
+  .brk .pc span{display:block;font-size:9.5px;color:var(--muted);}
+  .verdict{margin-top:14px;background:var(--sage-soft);border-radius:12px;padding:11px 13px;font-size:12px;color:var(--sage-deep);font-weight:700;}
+
+  .cmp{display:flex;gap:12px;}
+  .cmp .col{flex:1;text-align:center;background:var(--sage-soft);border-radius:14px;padding:14px 8px;}
+  .cmp .col.win{background:var(--terra-soft);}
+  .cmp .col .ic{font-size:22px;}
+  .cmp .col .t{font-size:11.5px;color:var(--brown);font-weight:700;margin-top:3px;}
+  .cmp .col .n{font-family:var(--serif);font-size:21px;font-weight:700;color:var(--brown);margin-top:5px;}
+  .cmp .col .u{font-size:9.5px;color:var(--muted);}
+  .cmp .col .tag{display:inline-block;margin-top:7px;font-size:10px;font-weight:700;background:var(--terra);color:#fff;border-radius:999px;padding:2px 10px;}
+
+  .rk{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .rk:last-child{border-bottom:none;}
+  .rk .no{width:23px;height:23px;flex-shrink:0;border-radius:50%;background:var(--sage-soft);color:var(--sage-deep);font-family:var(--serif);font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;}
+  .rk .no.top{background:var(--terra);color:#fff;}
+  .rk .tx{flex:1;min-width:0;}
+  .rk .tx .p{font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rk .tx .m{font-size:10px;color:var(--muted);margin-top:2px;}
+  .rk .mult{font-size:11px;font-weight:700;color:var(--terra-deep);background:var(--terra-soft);border-radius:999px;padding:3px 9px;white-space:nowrap;}
+  .rk a{color:inherit;text-decoration:none;display:flex;align-items:center;gap:12px;width:100%;}
+
+  .kw{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .kw .k{border-radius:999px;padding:6px 13px;font-weight:700;color:var(--sage-deep);background:var(--sage-soft);}
+  .kw .k.big{font-size:16px;background:var(--sage);color:#fff;}
+  .kw .k.mid{font-size:13px;}
+  .kw .k.sm{font-size:11.5px;}
+
+  .advice{background:linear-gradient(140deg,#EAF1DB,#DAE7C2);border-radius:18px;padding:16px;display:flex;gap:12px;align-items:flex-start;}
+  .advice .ac{font-size:26px;flex-shrink:0;}
+  .advice .at{font-size:12.5px;color:#4f5a3c;line-height:1.75;}
+  .advice .at b{color:var(--terra-deep);}
+
+  .state{padding:50px 24px;text-align:center;color:var(--muted);}
+  .state .em{font-size:40px;}
+  .state p{margin-top:12px;font-size:13px;}
+  .spinner{width:34px;height:34px;border:4px solid var(--line);border-top-color:var(--sage-deep);border-radius:50%;margin:0 auto;animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .errbox{background:#FBEBE2;border:1px solid #E9C3AC;border-radius:14px;padding:14px;font-size:12px;color:#9a5a35;text-align:left;word-break:break-word;}
+  .updbtn{margin-top:14px;background:var(--sage-deep);color:#fff;border:none;border-radius:999px;padding:10px 22px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;}
+
+  .foot{text-align:center;font-size:10px;color:var(--muted);margin-top:22px;letter-spacing:.06em;}
 </style>
 </head>
 <body>
   <div class="phone">
     <div class="hero"><img src="cats.png" alt="" onerror="this.style.display='none'"></div>
-    <div class="body">
+    <div class="brand">
       <div class="kicker">T H R E A D S　A N A L Y T I C S</div>
       <h1>Threadsにゃんせき</h1>
-      <p class="lead">あなたの発信を、まるっと分析。<br>まずはThreadsとつなげましょう🐾</p>
-
-      <a class="btn" href="/api/auth">🧵 Threadsでログイン</a>
-
-      <div class="note">
-        🔒 <b>安全のしくみ</b>：ログインするとThreadsが「許可していい？」と聞いてきます。許可すると、アプリの裏側が自動で接続情報を受け取ります。あなたがパスワードやトークンを入力する必要はありません。
+      <p id="brandsub">読み込み中…</p>
+    </div>
+    <div class="scroll">
+      <div id="app">
+        <div class="state">
+          <div class="spinner"></div>
+          <p>あなたのThreadsを分析しています…🐱<br><small>投稿数によっては少し時間がかかります</small></p>
+        </div>
       </div>
-      <div class="foot">🐱 Threadsにゃんせき</div>
     </div>
   </div>
+
+<script>
+const $ = (h) => { const d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstChild; };
+const nf = (n) => (n==null? '—' : Number(n).toLocaleString('ja-JP'));
+const kf = (n) => { n=Number(n)||0; return n>=10000? (n/10000).toFixed(1)+'万' : n>=1000? (n/1000).toFixed(1)+'k' : String(Math.round(n)); };
+const eng = (p) => (p.likes||0)+(p.replies||0)+(p.reposts||0)+(p.quotes||0);
+const hasMedia = (p) => p.type && !['TEXT_POST','TEXT'].includes(p.type);
+
+let DATA = null;
+let PERIOD = 'all';
+
+async function load(){
+  try{
+    const r = await fetch('/api/insights');
+    const d = await r.json();
+    if(d.error){ return renderError(d.error); }
+    DATA = d;
+    document.getElementById('brandsub').textContent = (d.username? '@'+d.username+' ・ ' : '') + '全'+d.count+'投稿を分析';
+    render();
+  }catch(e){ renderError(String(e.message||e)); }
+}
+
+function renderError(msg){
+  document.getElementById('brandsub').textContent = 'エラー';
+  document.getElementById('app').innerHTML = '';
+  document.getElementById('app').appendChild($(`
+    <div class="state">
+      <div class="em">😿</div>
+      <p>データを取得できませんでした。</p>
+      <div class="errbox">${escapeHtml(msg)}</div>
+      <button class="updbtn" onclick="location.reload()">もう一度ためす</button>
+    </div>`));
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function filtered(){
+  const posts = DATA.posts.slice();
+  if(PERIOD==='all') return posts;
+  const days = PERIOD==='7'? 7 : 30;
+  const cut = Date.now() - days*86400*1000;
+  return posts.filter(p=> new Date(p.ts).getTime() >= cut);
+}
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  // 期間タブ
+  const tabs = $(`<div class="periods">
+    <div class="pt" data-p="7">直近1週間</div>
+    <div class="pt" data-p="30">直近30日</div>
+    <div class="pt" data-p="all">全期間</div>
+  </div>`);
+  tabs.querySelectorAll('.pt').forEach(t=>{
+    if(t.dataset.p===PERIOD) t.classList.add('on');
+    t.onclick = ()=>{ PERIOD=t.dataset.p; render(); };
+  });
+  app.appendChild(tabs);
+
+  const posts = filtered();
+  if(posts.length===0){
+    app.appendChild($(`<div class="state"><div class="em">🍃</div><p>この期間の投稿はありません。<br>ほかの期間を選んでみてね。</p></div>`));
+    return;
+  }
+
+  const n = posts.length;
+  const sum = (k)=> posts.reduce((a,p)=>a+(Number(p[k])||0),0);
+  const avg = (k)=> sum(k)/n;
+  const totalViews = sum('views');
+  const totalEng = posts.reduce((a,p)=>a+eng(p),0);
+  const egRate = totalViews>0 ? (totalEng/totalViews*100) : 0;
+  const WORLD = 2.0; // 世間のおおよその目安(参考)
+
+  // ---- サマリー ----
+  const sumSec = $(`<div class="sec">
+    <div class="sec-h">サマリー<span class="ln"></span><span class="mini">${DATA.followers!=null? 'フォロワー '+nf(DATA.followers)+' ・ ':''}${n}投稿</span></div>
+    <div class="kpis">
+      <div class="kpi"><div class="lab">平均表示回数</div><div class="val">${nf(Math.round(avg('views')))}</div><div class="sub">1投稿あたり</div><div class="deco">👀</div></div>
+      <div class="kpi"><div class="lab">平均いいね</div><div class="val">${nf(Math.round(avg('likes')))}</div><div class="sub">1投稿あたり</div><div class="deco">❤️</div></div>
+      <div class="kpi"><div class="lab">平均エンゲージ</div><div class="val">${nf(Math.round(totalEng/n))}</div><div class="sub">反応の合計</div><div class="deco">💬</div></div>
+      <div class="kpi hl"><div class="lab">EG率（刺さり度）</div><div class="val">${egRate.toFixed(1)}<small>%</small></div><div class="sub">世間の目安 約${WORLD}% ／ ${egRate>=WORLD?'好調です':'のびしろ'}</div><div class="deco">🔥</div></div>
+    </div>
+  </div>`);
+  app.appendChild(sumSec);
+
+  // ---- 時間帯別（4時間×6バケツ） ----
+  const buckets = [0,0,0,0,0,0].map(()=>({likes:0,views:0,c:0}));
+  const blabels = ['0-3','4-7','8-11','12-15','16-19','20-23'];
+  posts.forEach(p=>{ const h=new Date(p.ts).getHours(); const b=Math.floor(h/4); buckets[b].likes+=(p.likes||0); buckets[b].views+=(p.views||0); buckets[b].c++; });
+  const bavgL = buckets.map(b=> b.c? b.likes/b.c : 0);
+  const bavgV = buckets.map(b=> b.c? b.views/b.c : 0);
+  const maxL = Math.max(...bavgL,1), maxV = Math.max(...bavgV,1);
+  const bestLi = bavgL.indexOf(Math.max(...bavgL));
+  const barsL = bavgL.map((v,i)=>`<div class="b"><div class="bv">${v?kf(v):''}</div><div class="bar like ${i===bestLi&&v>0?'best':''}" style="height:${Math.max(2,v/maxL*100)}%"></div><div class="bx">${blabels[i]}</div></div>`).join('');
+  const barsV = bavgV.map((v,i)=>`<div class="b"><div class="bv">${v?kf(v):''}</div><div class="bar view ${i===bestLi&&v>0?'best':''}" style="height:${Math.max(2,v/maxV*100)}%"></div><div class="bx">${blabels[i]}</div></div>`).join('');
+  app.appendChild($(`<div class="sec">
+    <div class="sec-h">時間帯別のパフォーマンス<span class="ln"></span></div>
+    <div class="card">
+      <div class="chart-title">🟩 平均いいね</div><div class="bars">${barsL}</div>
+      <div class="divider"></div>
+      <div class="chart-title">🟧 平均表示回数</div><div class="bars">${barsV}</div>
+      ${bavgL[bestLi]>0?`<div class="peak">🐾 いちばん伸びる時間帯は「${blabels[bestLi]}時」</div>`:''}
+    </div>
+  </div>`));
+
+  // ---- 週ごと推移 ----
+  const weekMap = {};
+  posts.forEach(p=>{ const d=new Date(p.ts); const wk=weekKey(d); (weekMap[wk]=weekMap[wk]||{likes:0,views:0,c:0}); weekMap[wk].likes+=(p.likes||0); weekMap[wk].views+=(p.views||0); weekMap[wk].c++; });
+  const weeks = Object.keys(weekMap).sort().slice(-10);
+  if(weeks.length>=2){
+    const wl = weeks.map(w=> weekMap[w].likes/weekMap[w].c);
+    const wv = weeks.map(w=> weekMap[w].views/weekMap[w].c);
+    app.appendChild($(`<div class="sec">
+      <div class="sec-h">週ごとの推移<span class="ln"></span></div>
+      <div class="card">
+        <svg viewBox="0 0 320 130" width="100%" height="130" preserveAspectRatio="none">
+          <line x1="0" y1="32" x2="320" y2="32" stroke="#EAE1D2"/><line x1="0" y1="65" x2="320" y2="65" stroke="#EAE1D2"/><line x1="0" y1="98" x2="320" y2="98" stroke="#EAE1D2"/>
+          <polyline points="${polyPts(wv)}" fill="none" stroke="#D68A5A" stroke-width="2.5" stroke-linecap="round"/>
+          <polyline points="${polyPts(wl)}" fill="none" stroke="#6E9A4E" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <div class="legend"><span><span class="dotm" style="background:#6E9A4E"></span>平均いいね</span><span><span class="dotm" style="background:#D68A5A"></span>平均表示</span></div>
+        <div class="line-cap">右肩上がり＝発信の手ごたえUP（直近${weeks.length}週）</div>
+      </div>
+    </div>`));
+  }
+
+  // ---- 反応の内訳 ----
+  const rb = {likes:sum('likes'),replies:sum('replies'),reposts:sum('reposts'),quotes:sum('quotes')};
+  const rbTotal = rb.likes+rb.replies+rb.reposts+rb.quotes || 1;
+  const pct = (v)=> Math.round(v/rbTotal*100);
+  let verdict = 'バランスよく反応がついています';
+  const rShare=rb.replies/rbTotal, spreadShare=(rb.reposts+rb.quotes)/rbTotal;
+  if(rShare>=0.18) verdict='「返信＝会話が生まれる投稿」が得意なタイプ！🗣️';
+  else if(spreadShare>=0.22) verdict='「リポスト・引用＝広まる投稿」が得意なタイプ！🔁';
+  else verdict='「いいね＝共感される投稿」が得意なタイプ！❤️';
+  app.appendChild($(`<div class="sec">
+    <div class="sec-h">反応の内訳<span class="ln"></span></div>
+    <div class="card">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">どんな反応が多い？＝あなたの投稿の“得意なこと”がわかります</div>
+      <div class="stack">
+        <i style="width:${pct(rb.likes)}%;background:#6E9A4E"></i><i style="width:${pct(rb.replies)}%;background:#D68A5A"></i>
+        <i style="width:${pct(rb.reposts)}%;background:#5A5241"></i><i style="width:${pct(rb.quotes)}%;background:#C6D3AE"></i>
+      </div>
+      ${brkRow('❤️','var(--sage-soft)','いいね','共感された数',rb.likes,pct(rb.likes))}
+      ${brkRow('💬','var(--terra-soft)','返信','会話が生まれた数',rb.replies,pct(rb.replies))}
+      ${brkRow('🔁','#EDE6DD','リポスト','広めてもらえた数',rb.reposts,pct(rb.reposts))}
+      ${brkRow('✍️','var(--sage-soft)','引用','語りたくなった数',rb.quotes,pct(rb.quotes))}
+      <div class="verdict">🐱 あなたは ${verdict}</div>
+    </div>
+  </div>`));
+
+  // ---- 投稿タイプ別 ----
+  const media = posts.filter(hasMedia), text = posts.filter(p=>!hasMedia(p));
+  const avgL = (arr)=> arr.length? arr.reduce((a,p)=>a+(p.likes||0),0)/arr.length : 0;
+  const mL=avgL(media), tL=avgL(text);
+  if(media.length && text.length){
+    const mediaWin = mL>=tL;
+    const ratio = tL>0 && mL>0 ? (mediaWin? (mL/tL):(tL/mL)).toFixed(1) : null;
+    app.appendChild($(`<div class="sec">
+      <div class="sec-h">投稿タイプ別の比較<span class="ln"></span><span class="mini">平均いいね</span></div>
+      <div class="cmp">
+        <div class="col ${!mediaWin?'win':''}"><div class="ic">📝</div><div class="t">文字だけ</div><div class="n">${nf(Math.round(tL))}</div><div class="u">${text.length}投稿</div>${!mediaWin&&ratio?`<div class="tag">${ratio}倍！</div>`:''}</div>
+        <div class="col ${mediaWin?'win':''}"><div class="ic">🖼️</div><div class="t">画像・動画あり</div><div class="n">${nf(Math.round(mL))}</div><div class="u">${media.length}投稿</div>${mediaWin&&ratio?`<div class="tag">${ratio}倍！</div>`:''}</div>
+      </div>
+    </div>`));
+  }
+
+  // ---- キーワード ----
+  const kw = keywords(posts);
+  if(kw.length){
+    const max = kw[0].score;
+    const chips = kw.map(k=>{ const r=k.score/max; const cls=r>0.66?'big':r>0.33?'mid':'sm'; return `<span class="k ${cls}">${escapeHtml(k.word)}</span>`; }).join('');
+    app.appendChild($(`<div class="sec">
+      <div class="sec-h">伸びるキーワード・テーマ<span class="ln"></span></div>
+      <div class="card"><div class="kw">${chips}</div><div class="line-cap" style="text-align:left;margin-top:11px;">大きい言葉ほど、反応が良いテーマ🐾</div></div>
+    </div>`));
+  }
+
+  // ---- ランキング ----
+  const avgEng = totalEng/n;
+  const top = posts.slice().sort((a,b)=>eng(b)-eng(a)).slice(0,5);
+  const rows = top.map((p,i)=>{
+    const mult = avgEng>0? (eng(p)/avgEng).toFixed(1):'—';
+    const txt = (p.text||'(本文なし)').replace(/\n/g,' ');
+    return `<div class="rk"><a href="${p.permalink||'#'}" target="_blank" rel="noopener">
+      <div class="no ${i<2?'top':''}">${i+1}</div>
+      <div class="tx"><div class="p">${escapeHtml(txt)}</div><div class="m">👀 ${nf(p.views)} ・ ❤️ ${nf(p.likes)} ・ 💬 ${nf(p.replies)}</div></div>
+      <div class="mult">平均×${mult}</div></a></div>`;
+  }).join('');
+  app.appendChild($(`<div class="sec"><div class="sec-h">ウケた投稿ランキング<span class="ln"></span></div><div class="card">${rows}</div></div>`));
+
+  // ---- アドバイス ----
+  app.appendChild($(`<div class="sec">
+    <div class="sec-h">今日のひとことアドバイス<span class="ln"></span></div>
+    <div class="advice"><div class="ac">😺</div><div class="at">${advice(posts,{bestBucket:blabels[bestLi],bestBucketVal:bavgL[bestLi],mL,tL,verdict,egRate,WORLD})}</div></div>
+  </div>`));
+
+  app.appendChild($(`<div class="foot">🐱 Threadsにゃんせき ・ ${DATA.username?'@'+DATA.username:''}</div>`));
+}
+
+function brkRow(ic,bg,nm,mean,cnt,pc){
+  return `<div class="brk"><div class="ic" style="background:${bg}">${ic}</div><div><div class="nm">${nm}</div><div class="mean">${mean}</div></div><div class="pc"><b>${pc}%</b><span>${nf(cnt)}件</span></div></div>`;
+}
+function weekKey(d){ const t=new Date(d); const day=(t.getDay()+6)%7; t.setDate(t.getDate()-day); return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0'); }
+function polyPts(arr){ const max=Math.max(...arr,1); const n=arr.length; return arr.map((v,i)=>{ const x= n===1?160:(10+i*(300/(n-1))); const y= 118 - (v/max)*90; return x.toFixed(0)+','+y.toFixed(0); }).join(' '); }
+
+function keywords(posts){
+  const stop = new Set(['です','ます','こと','これ','それ','あれ','どれ','ため','よう','そう','とき','もの','ところ','わたし','わたし','みたい','ここ','そこ','ちゃん','さん','たち','とても','本当','今日','昨日','明日','自分','みなさん','みんな']);
+  const score = {};
+  posts.forEach(p=>{
+    const w = eng(p)+1;
+    const text = (p.text||'').replace(/https?:\/\/\S+/g,' ');
+    const seen = new Set();
+    // ハッシュタグ
+    (text.match(/[#＃][^\s#＃、。!！?？]+/g)||[]).forEach(h=>{ const k=h.replace(/^[#＃]/,''); if(k.length>=2&&!seen.has(k)){ score[k]=(score[k]||0)+w; seen.add(k);} });
+    // 漢字・カタカナのまとまり
+    (text.match(/[一-龥々〆ヶ]{2,}|[ァ-ヶー]{3,}/g)||[]).forEach(m=>{ if(m.length>=2 && m.length<=8 && !stop.has(m) && !seen.has(m)){ score[m]=(score[m]||0)+w; seen.add(m);} });
+  });
+  return Object.entries(score).map(([word,s])=>({word,score:s})).sort((a,b)=>b.score-a.score).slice(0,8);
+}
+
+function advice(posts,x){
+  const bits=[];
+  if(x.mL && x.tL){ if(x.mL>x.tL*1.15) bits.push(`<b>画像・動画つき</b>の投稿が、文字だけより <b>${(x.mL/x.tL).toFixed(1)}倍</b>伸びています`); else if(x.tL>x.mL*1.15) bits.push(`意外にも<b>文字だけ</b>の投稿がよく伸びています`); }
+  if(x.bestBucketVal>0) bits.push(`<b>${x.bestBucket}時台</b>の反応がいちばん◎`);
+  const clean = x.verdict.replace(/[「」！!🗣️🔁❤️]/g,'').trim();
+  bits.push(`あなたの強みは<b>「${clean}」</b>`);
+  let msg = bits.slice(0,2).join('。そして') + '。';
+  msg += ` 次は「よく伸びるテーマ × ${x.mL>x.tL?'画像':'あなたの得意な形'} × ${x.bestBucketVal>0?x.bestBucket+'時':'反応が良い時間'}」で狙ってみてにゃ🐾`;
+  return msg;
+}
+
+load();
+</script>
 </body>
 </html>
