@@ -206,7 +206,15 @@ async function load(){
     const d = await r.json();
     if(d.error){ return renderError(d.error); }
     DATA = d;
-    document.getElementById('brandsub').textContent = (d.username? '@'+d.username+' ・ ' : '') + '全'+d.count+'投稿を分析';
+    // リポスト・返信などの「本文なし＋反応ゼロ」ノイズを除外（平均が下がるのを防ぐ）
+    DATA.posts = (DATA.posts||[]).filter(p=>{
+      if(p.type === 'REPOST_FACADE') return false;
+      const noText = !(p.text && p.text.trim());
+      const noData = ((p.views||0)+(p.likes||0)+(p.replies||0)+(p.reposts||0)+(p.quotes||0)) === 0;
+      return !(noText && noData);
+    });
+    DATA.count = DATA.posts.length;
+    document.getElementById('brandsub').textContent = (d.username? '@'+d.username+' ・ ' : '') + '全'+DATA.count+'投稿を分析';
     render();
   }catch(e){ renderError(String(e.message||e)); }
 }
