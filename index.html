@@ -84,6 +84,15 @@
   .wk-x span{font-size:8.5px;color:var(--muted);flex:1;text-align:center;}
   .wk-y{font-size:10px;color:var(--muted);margin-bottom:8px;}
   .wk-y b{color:var(--brown);}
+  .repintro{font-size:12.5px;color:var(--text);line-height:1.85;margin-bottom:14px;}
+  .repintro b{color:var(--sage-deep);}
+  .repsteps{background:var(--sage-soft);border-radius:14px;padding:13px 16px;font-size:12px;color:var(--sage-deep);line-height:2;margin-bottom:16px;}
+  .repsteps b{color:var(--brown);}
+  .copybtn{width:100%;background:var(--brown);color:#fff;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:.12s;}
+  .copybtn:active{transform:scale(.98);}
+  .copybtn.done{background:var(--sage-deep);}
+  .repnote{font-size:11px;color:var(--muted);margin-top:14px;margin-bottom:6px;}
+  .reptext{width:100%;height:150px;border:1px solid var(--line);border-radius:12px;padding:11px;font-size:10.5px;font-family:ui-monospace,monospace;color:var(--muted);background:var(--card);resize:vertical;line-height:1.5;}
 
   .sec{margin-top:24px;}
   .sec-h{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--brown);margin:0 2px 11px;letter-spacing:.05em;display:flex;align-items:center;gap:8px;}
@@ -279,10 +288,12 @@ function periodLabel(){ return PERIOD==='7'?'直近1週間':PERIOD==='30'?'直�
 function render(){
   const app = document.getElementById('app');
   app.innerHTML = '';
-  if(VIEW==='hours' || VIEW==='metric'){
+  if(VIEW==='hours' || VIEW==='metric' || VIEW==='report'){
     renderBack(app);
     app.appendChild(periodTabsEl());
-    if(VIEW==='hours') renderHours(app); else renderMetric(app, VIEW_METRIC);
+    if(VIEW==='hours') renderHours(app);
+    else if(VIEW==='report') renderReport(app);
+    else renderMetric(app, VIEW_METRIC);
     return;
   }
   app.appendChild(viewTabsEl());
@@ -458,10 +469,13 @@ function render(){
   drawRank();
 
   // ---- アドバイス ----
-  app.appendChild($(`<div class="sec">
-    <div class="sec-h">今日のひとことアドバイス<span class="ln"></span></div>
+  const adviceSec = $(`<div class="sec">
+    <div class="sec-h">今日のひとことアドバイス<span class="ln"></span><span class="clickhint">くわしい戦略レポート ›</span></div>
     <div class="advice"><div class="ac">😺</div><div class="at">${advice(posts,{bestBucket:blabels[bestLi],bestBucketVal:bavgL[bestLi],mL,tL,verdict,egRate,WORLD})}</div></div>
-  </div>`));
+  </div>`);
+  adviceSec.style.cursor='pointer';
+  adviceSec.onclick = ()=>{ VIEW='report'; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+  app.appendChild(adviceSec);
 
   app.appendChild($(`<div class="foot">🐱 Threadsにゃんせき ・ ${DATA.username?'@'+DATA.username:''}</div>`));
 }
@@ -496,6 +510,87 @@ function advice(posts,x){
   let msg = bits.slice(0,2).join('。そして') + '。';
   msg += ` 次は「よく伸びるテーマ × ${x.mL>x.tL?'画像':'あなたの得意な形'} × ${x.bestBucketVal>0?x.bestBucket+'時':'反応が良い時間'}」で狙ってみてにゃ🐾`;
   return msg;
+}
+
+// ===== くわしい戦略レポート（コピペ方式・月額内でClaudeに分析してもらう） =====
+function patternOf(p){
+  const t = p.text || '';
+  if(/https?:\/\//.test(t) || /(募集|販売|セール|申込|申し込み|リリース|発売|開催|受付|プレゼント|無料配布|告知|クーポン|割引|ＯＦＦ|OFF|キャンペーン|募集中|受付中)/.test(t)) return '告知系';
+  if(/[?？]/.test(t)) return '問い形式';
+  return '説明形式';
+}
+function buildReportPrompt(posts){
+  const n = posts.length;
+  const sum = (k)=> posts.reduce((a,p)=>a+(Number(p[k])||0),0);
+  const totalEng = posts.reduce((a,p)=>a+eng(p),0);
+  const egRate = sum('views')>0 ? (totalEng/sum('views')*100) : 0;
+
+  const hv = Array.from({length:24},()=>({likes:0,replies:0,c:0}));
+  posts.forEach(p=>{ const h=new Date(p.ts).getHours(); hv[h].likes+=(p.likes||0); hv[h].replies+=(p.replies||0); hv[h].c++; });
+  let hourLines='';
+  for(let h=0;h<24;h++){ if(hv[h].c) hourLines += `- ${h}時台：${hv[h].c}件 / 平均いいね${Math.round(hv[h].likes/hv[h].c)} / 平均コメント${Math.round(hv[h].replies/hv[h].c)}\n`; }
+
+  const pat = {'問い形式':{likes:0,replies:0,c:0},'説明形式':{likes:0,replies:0,c:0},'告知系':{likes:0,replies:0,c:0}};
+  posts.forEach(p=>{ const k=patternOf(p); pat[k].likes+=(p.likes||0); pat[k].replies+=(p.replies||0); pat[k].c++; });
+  let patLines='';
+  Object.entries(pat).forEach(([k,v])=>{ if(v.c) patLines += `- ${k}：${v.c}件 / 平均いいね${Math.round(v.likes/v.c)} / 平均コメント${Math.round(v.replies/v.c)}\n`; });
+
+  let postLines='';
+  posts.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).forEach(p=>{
+    const d=new Date(p.ts);
+    const dt=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const t=(p.text||'(本文なし)').replace(/\n/g,' ');
+    postLines += `[${dt}｜${patternOf(p)}｜${hasMedia(p)?'画像/動画':'文字'}] 表示${p.views} いいね${p.likes} コメント${p.replies} リポスト${p.reposts} 引用${p.quotes}\n本文：${t}\n\n`;
+  });
+
+  return `あなたは、Threadsの発信を伸ばすプロの分析コンサルタントです。
+以下の私のThreadsデータをもとに、次のフォーマットで具体的な戦略レポートを書いてください。ふわっとした感想や励ましより、データに基づいた鋭い読み解きと、明日から動ける具体策を優先してください。
+
+【出力フォーマット】
+■ 30秒まとめ（1行で今の状態を言い切る）
+① データから読める事実（客観的な数字だけ。感想なし。時間帯別と投稿パターン別を中心に）
+② なぜそうなるか（読者心理・アルゴリズム構造の視点で。「なぜ問いが強いか」等）
+③ 何が良くて何が弱いか（良いこと✅ / 弱いこと⚠️ を箇条書き）
+④ 来週の具体プラン（最優先を1つに絞る。理由・内容・期待値も）
+✅ 次にやる1つ（すぐ動ける具体アクション＋そのまま使える投稿テンプレ3案）
+
+━━━━━━━━━━
+【アカウント】@${DATA.username||'-'} ／ フォロワー：${DATA.followers!=null?DATA.followers:'不明'} ／ 集計期間：${periodLabel()} ／ ${n}投稿
+【平均】表示${Math.round(sum('views')/n)} ・ いいね${Math.round(sum('likes')/n)} ・ コメント${Math.round(sum('replies')/n)} ・ エンゲージ率${egRate.toFixed(1)}%
+
+【時間帯別（1時間ごと）】
+${hourLines}
+【投稿パターン別の反応】
+${patLines}
+【投稿一覧（新しい順・全${n}件）】
+${postLines}━━━━━━━━━━
+以上のデータだけを根拠に、上記フォーマットで日本語のレポートを書いてください。`;
+}
+
+function renderReport(app){
+  const posts = filtered();
+  app.appendChild($(`<div class="detail-title">🤖 くわしい戦略レポート</div>`));
+  app.appendChild($(`<div class="detail-sub">${periodLabel()} ・ ${posts.length}投稿</div>`));
+  if(posts.length===0){ app.appendChild($(`<div class="state"><div class="em">🍃</div><p>この期間の投稿はありません</p></div>`)); return; }
+
+  app.appendChild($(`<div class="repintro">下のボタンでデータをコピーして、<b>Claudeのチャット（claude.ai）の新しいチャット</b>に貼って送信するだけ。あなたのデータをもとに、コンサル級の戦略レポートを書いてくれます🐾（<b>月額の範囲でOK・追加料金なし</b>）</div>`));
+  app.appendChild($(`<div class="repsteps"><b>使い方（3ステップ）</b><br>① 下の「分析用データをコピー」を押す<br>② <b>claude.ai</b> を開いて「＋新しいチャット」<br>③ 貼り付けて送信 → レポート完成！✨</div>`));
+
+  const payload = buildReportPrompt(posts);
+  const btn = $(`<button class="copybtn">📋 分析用データをコピー</button>`);
+  const ta = $(`<textarea class="reptext" readonly></textarea>`);
+  ta.value = payload;
+  btn.onclick = async ()=>{
+    let ok=false;
+    try{ await navigator.clipboard.writeText(payload); ok=true; }
+    catch(e){ try{ ta.focus(); ta.select(); ok=document.execCommand('copy'); }catch(_){} }
+    btn.textContent = ok ? '✅ コピー完了！claude.aiに貼ってね' : '↓ 下の枠を長押しでコピーしてね';
+    btn.classList.add('done');
+    setTimeout(()=>{ btn.textContent='📋 分析用データをコピー'; btn.classList.remove('done'); }, 3500);
+  };
+  app.appendChild(btn);
+  app.appendChild($(`<div class="repnote">↓ コピーされる内容（確認用。うまくコピーできない時はこの枠から手動で）</div>`));
+  app.appendChild(ta);
 }
 
 // ===== 指標の深掘りページ（トップ3・ワースト3・共通点） =====
