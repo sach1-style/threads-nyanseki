@@ -34,6 +34,54 @@
   .periods .pt{flex:1;text-align:center;font-size:11.5px;font-weight:700;padding:9px 0;border-radius:999px;background:transparent;color:var(--muted);border:1px solid var(--line);cursor:pointer;letter-spacing:.03em;}
   .periods .pt.on{background:var(--sage-deep);color:#fff;border-color:var(--sage-deep);}
 
+  .views{display:flex;gap:6px;padding:14px 0 0;}
+  .views .vt{flex:1;text-align:center;font-size:12.5px;font-weight:700;padding:11px 0;border-radius:13px;background:var(--card);color:var(--muted);border:1px solid var(--line);cursor:pointer;}
+  .views .vt.on{background:var(--brown);color:#fff;border-color:var(--brown);}
+  .listbar{display:flex;gap:8px;margin-top:16px;}
+  .listbar .search{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:10px 13px;font-size:13px;font-family:inherit;color:var(--text);background:var(--card);}
+  .listbar .sortsel{border:1px solid var(--line);border-radius:12px;padding:10px 8px;font-size:12px;font-family:inherit;color:var(--text);background:var(--card);}
+  .listcount{font-size:11px;color:var(--muted);margin:14px 2px 8px;font-weight:700;}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px;}
+  .pcard .pmeta{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted);}
+  .pcard .pmeta .plink{color:var(--sage-deep);text-decoration:none;font-weight:700;}
+  .pcard .ptext{font-size:13px;color:var(--text);margin:9px 0 12px;white-space:pre-wrap;word-break:break-word;line-height:1.7;}
+  .pmetrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--line);padding-top:11px;}
+  .pmetrics .mt{text-align:center;background:var(--bg);border-radius:10px;padding:7px 2px;}
+  .pmetrics .mt span{font-size:13px;}
+  .pmetrics .mt b{display:block;font-size:14px;color:var(--brown);font-weight:700;margin-top:2px;font-family:var(--serif);}
+  .pmetrics .mt i{font-size:9px;color:var(--muted);font-style:normal;}
+  .pmetrics .hlmt{background:var(--terra-soft);}
+  .pmetrics .hlmt b{color:var(--terra-deep);}
+
+  .backbar{padding:14px 0 0;}
+  .backbtn{background:var(--card);border:1px solid var(--line);color:var(--brown);border-radius:999px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .detail-title{font-family:var(--serif);font-size:20px;color:var(--brown);margin:18px 2px 4px;letter-spacing:.04em;}
+  .detail-sub{font-size:11.5px;color:var(--muted);margin:0 2px 14px;}
+  .kpi{cursor:pointer;transition:transform .1s;}
+  .kpi:active{transform:scale(.97);}
+  .taphint{font-size:11px;color:var(--sage-deep);font-weight:700;margin-top:10px;text-align:right;}
+  .clickhint{font-size:10.5px;color:var(--sage-deep);font-weight:700;font-family:var(--sans);}
+  .rank-label{font-size:13px;font-weight:700;color:var(--brown);margin:22px 2px 9px;}
+  .rank-label.worst{color:var(--terra-deep);}
+  .mcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:9px;display:flex;gap:12px;align-items:flex-start;}
+  .mcard .big{font-family:var(--serif);font-size:21px;font-weight:700;color:var(--sage-deep);flex-shrink:0;min-width:66px;text-align:center;line-height:1.15;}
+  .mcard .big small{display:block;font-size:9px;color:var(--muted);font-weight:400;font-family:var(--sans);margin-top:2px;}
+  .mcard.worst .big{color:var(--terra-deep);}
+  .mcard .mc-body{flex:1;min-width:0;}
+  .mcard .mc-txt{font-size:12px;color:var(--text);line-height:1.65;max-height:3.3em;overflow:hidden;}
+  .mcard .mc-sub{font-size:10px;color:var(--muted);margin-top:6px;}
+  .insight{background:var(--sage-soft);border-radius:14px;padding:14px;font-size:12.5px;color:var(--sage-deep);line-height:1.9;}
+  .insight b{color:var(--brown);}
+  .hourblock{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:9px;}
+  .hourblock .hh{display:flex;align-items:center;gap:8px;font-weight:700;color:var(--brown);font-size:13px;margin-bottom:6px;}
+  .hourblock .hh .cnt{margin-left:auto;font-size:10px;color:var(--muted);font-weight:400;}
+  .hourblock .hp{font-size:11.5px;color:var(--text);padding:7px 0;border-top:1px dashed var(--line);line-height:1.55;}
+  .hourblock .hp .hpm{color:var(--muted);font-size:10px;}
+  .wk-x{display:flex;justify-content:space-between;margin-top:7px;padding:0 2px;}
+  .wk-x span{font-size:8.5px;color:var(--muted);flex:1;text-align:center;}
+  .wk-y{font-size:10px;color:var(--muted);margin-bottom:8px;}
+  .wk-y b{color:var(--brown);}
+
   .sec{margin-top:24px;}
   .sec-h{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--brown);margin:0 2px 11px;letter-spacing:.05em;display:flex;align-items:center;gap:8px;}
   .sec-h .ln{flex:1;height:1px;background:var(--line);}
@@ -147,6 +195,10 @@ const hasMedia = (p) => p.type && !['TEXT_POST','TEXT'].includes(p.type);
 
 let DATA = null;
 let PERIOD = 'all';
+let VIEW = 'dashboard';
+let VIEW_METRIC = 'views';
+let LIST_SORT = 'new';
+let LIST_Q = '';
 
 async function load(){
   try{
@@ -181,11 +233,7 @@ function filtered(){
   return posts.filter(p=> new Date(p.ts).getTime() >= cut);
 }
 
-function render(){
-  const app = document.getElementById('app');
-  app.innerHTML = '';
-
-  // 期間タブ
+function periodTabsEl(){
   const tabs = $(`<div class="periods">
     <div class="pt" data-p="7">直近1週間</div>
     <div class="pt" data-p="30">直近30日</div>
@@ -195,7 +243,39 @@ function render(){
     if(t.dataset.p===PERIOD) t.classList.add('on');
     t.onclick = ()=>{ PERIOD=t.dataset.p; render(); };
   });
-  app.appendChild(tabs);
+  return tabs;
+}
+function viewTabsEl(){
+  const nav = $(`<div class="views">
+    <div class="vt" data-v="dashboard">📊 ダッシュボード</div>
+    <div class="vt" data-v="list">📋 投稿一覧</div>
+  </div>`);
+  nav.querySelectorAll('.vt').forEach(t=>{
+    if(t.dataset.v===VIEW) t.classList.add('on');
+    t.onclick = ()=>{ VIEW=t.dataset.v; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+  });
+  return nav;
+}
+
+function renderBack(app){
+  const b = $(`<div class="backbar"><button class="backbtn">← ダッシュボードに戻る</button></div>`);
+  b.querySelector('.backbtn').onclick = ()=>{ VIEW='dashboard'; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+  app.appendChild(b);
+}
+function periodLabel(){ return PERIOD==='7'?'直近1週間':PERIOD==='30'?'直近30日':'全期間'; }
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  if(VIEW==='hours' || VIEW==='metric'){
+    renderBack(app);
+    app.appendChild(periodTabsEl());
+    if(VIEW==='hours') renderHours(app); else renderMetric(app, VIEW_METRIC);
+    return;
+  }
+  app.appendChild(viewTabsEl());
+  app.appendChild(periodTabsEl());
+  if(VIEW==='list'){ renderList(app); return; }
 
   const posts = filtered();
   if(posts.length===0){
@@ -215,13 +295,15 @@ function render(){
   const sumSec = $(`<div class="sec">
     <div class="sec-h">サマリー<span class="ln"></span><span class="mini">${DATA.followers!=null? 'フォロワー '+nf(DATA.followers)+' ・ ':''}${n}投稿</span></div>
     <div class="kpis">
-      <div class="kpi"><div class="lab">平均表示回数</div><div class="val">${nf(Math.round(avg('views')))}</div><div class="sub">1投稿あたり</div><div class="deco">👀</div></div>
-      <div class="kpi"><div class="lab">平均いいね</div><div class="val">${nf(Math.round(avg('likes')))}</div><div class="sub">1投稿あたり</div><div class="deco">❤️</div></div>
-      <div class="kpi"><div class="lab">平均エンゲージ</div><div class="val">${nf(Math.round(totalEng/n))}</div><div class="sub">反応の合計</div><div class="deco">💬</div></div>
-      <div class="kpi hl"><div class="lab">EG率（刺さり度）</div><div class="val">${egRate.toFixed(1)}<small>%</small></div><div class="sub">世間の目安 約${WORLD}% ／ ${egRate>=WORLD?'好調です':'のびしろ'}</div><div class="deco">🔥</div></div>
+      <div class="kpi" data-metric="views"><div class="lab">平均表示回数</div><div class="val">${nf(Math.round(avg('views')))}</div><div class="sub">1投稿あたり</div><div class="deco">👀</div></div>
+      <div class="kpi" data-metric="likes"><div class="lab">平均いいね</div><div class="val">${nf(Math.round(avg('likes')))}</div><div class="sub">1投稿あたり</div><div class="deco">❤️</div></div>
+      <div class="kpi" data-metric="eng"><div class="lab">平均エンゲージ</div><div class="val">${nf(Math.round(totalEng/n))}</div><div class="sub">反応の合計</div><div class="deco">💬</div></div>
+      <div class="kpi hl" data-metric="egr"><div class="lab">EG率（刺さり度）</div><div class="val">${egRate.toFixed(1)}<small>%</small></div><div class="sub">世間の目安 約${WORLD}% ／ ${egRate>=WORLD?'好調です':'のびしろ'}</div><div class="deco">🔥</div></div>
     </div>
+    <div class="taphint">タップで詳細（トップ3・ワースト3・共通点）へ →</div>
   </div>`);
   app.appendChild(sumSec);
+  sumSec.querySelectorAll('.kpi[data-metric]').forEach(k=>{ k.onclick=()=>{ VIEW='metric'; VIEW_METRIC=k.dataset.metric; render(); window.scrollTo({top:0,behavior:'smooth'}); }; });
 
   // ---- 時間帯別（4時間×6バケツ） ----
   const buckets = [0,0,0,0,0,0].map(()=>({likes:0,views:0,c:0}));
@@ -233,15 +315,18 @@ function render(){
   const bestLi = bavgL.indexOf(Math.max(...bavgL));
   const barsL = bavgL.map((v,i)=>`<div class="b"><div class="bv">${v?kf(v):''}</div><div class="bar like ${i===bestLi&&v>0?'best':''}" style="height:${Math.max(2,v/maxL*100)}%"></div><div class="bx">${blabels[i]}</div></div>`).join('');
   const barsV = bavgV.map((v,i)=>`<div class="b"><div class="bv">${v?kf(v):''}</div><div class="bar view ${i===bestLi&&v>0?'best':''}" style="height:${Math.max(2,v/maxV*100)}%"></div><div class="bx">${blabels[i]}</div></div>`).join('');
-  app.appendChild($(`<div class="sec">
-    <div class="sec-h">時間帯別のパフォーマンス<span class="ln"></span></div>
+  const hoursSec = $(`<div class="sec">
+    <div class="sec-h">時間帯別のパフォーマンス<span class="ln"></span><span class="clickhint">くわしく ›</span></div>
     <div class="card">
       <div class="chart-title">🟩 平均いいね</div><div class="bars">${barsL}</div>
       <div class="divider"></div>
       <div class="chart-title">🟧 平均表示回数</div><div class="bars">${barsV}</div>
       ${bavgL[bestLi]>0?`<div class="peak">🐾 いちばん伸びる時間帯は「${blabels[bestLi]}時」</div>`:''}
     </div>
-  </div>`));
+  </div>`);
+  hoursSec.style.cursor='pointer';
+  hoursSec.onclick = ()=>{ VIEW='hours'; render(); window.scrollTo({top:0,behavior:'smooth'}); };
+  app.appendChild(hoursSec);
 
   // ---- 週ごと推移 ----
   const weekMap = {};
@@ -250,15 +335,21 @@ function render(){
   if(weeks.length>=2){
     const wl = weeks.map(w=> weekMap[w].likes/weekMap[w].c);
     const wv = weeks.map(w=> weekMap[w].views/weekMap[w].c);
+    const maxWL = Math.max(...wl), maxWV = Math.max(...wv);
+    const wlabels = weeks.map(w=>{ const d=new Date(w); return (d.getMonth()+1)+'月'+Math.ceil(d.getDate()/7)+'週'; });
+    const dotsL = wl.map((v,i)=>{ const n=wl.length; const x= n===1?160:(10+i*(300/(n-1))); const y= 118-(v/(maxWL||1))*90; return `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="3" fill="#6E9A4E"/><text x="${x.toFixed(0)}" y="${(y-6).toFixed(0)}" font-size="8" fill="#6E9A4E" text-anchor="middle">${nf(Math.round(v))}</text>`; }).join('');
     app.appendChild($(`<div class="sec">
       <div class="sec-h">週ごとの推移<span class="ln"></span></div>
       <div class="card">
-        <svg viewBox="0 0 320 130" width="100%" height="130" preserveAspectRatio="none">
-          <line x1="0" y1="32" x2="320" y2="32" stroke="#EAE1D2"/><line x1="0" y1="65" x2="320" y2="65" stroke="#EAE1D2"/><line x1="0" y1="98" x2="320" y2="98" stroke="#EAE1D2"/>
+        <div class="wk-y">たての最大：<b>❤️${nf(Math.round(maxWL))}</b> ／ <b>👀${nf(Math.round(maxWV))}</b>（各線ごと）</div>
+        <svg viewBox="0 0 320 130" width="100%" height="130">
+          <line x1="0" y1="28" x2="320" y2="28" stroke="#EAE1D2"/><line x1="0" y1="73" x2="320" y2="73" stroke="#EAE1D2"/><line x1="0" y1="118" x2="320" y2="118" stroke="#EAE1D2"/>
           <polyline points="${polyPts(wv)}" fill="none" stroke="#D68A5A" stroke-width="2.5" stroke-linecap="round"/>
           <polyline points="${polyPts(wl)}" fill="none" stroke="#6E9A4E" stroke-width="3" stroke-linecap="round"/>
+          ${dotsL}
         </svg>
-        <div class="legend"><span><span class="dotm" style="background:#6E9A4E"></span>平均いいね</span><span><span class="dotm" style="background:#D68A5A"></span>平均表示</span></div>
+        <div class="wk-x">${wlabels.map(l=>`<span>${l}</span>`).join('')}</div>
+        <div class="legend"><span><span class="dotm" style="background:#6E9A4E"></span>平均いいね（数字つき）</span><span><span class="dotm" style="background:#D68A5A"></span>平均表示</span></div>
         <div class="line-cap">右肩上がり＝発信の手ごたえUP（直近${weeks.length}週）</div>
       </div>
     </div>`));
@@ -368,6 +459,160 @@ function advice(posts,x){
   let msg = bits.slice(0,2).join('。そして') + '。';
   msg += ` 次は「よく伸びるテーマ × ${x.mL>x.tL?'画像':'あなたの得意な形'} × ${x.bestBucketVal>0?x.bestBucket+'時':'反応が良い時間'}」で狙ってみてにゃ🐾`;
   return msg;
+}
+
+// ===== 指標の深掘りページ（トップ3・ワースト3・共通点） =====
+function renderMetric(app, metric){
+  const posts = filtered();
+  const M = {
+    views:{label:'表示回数',emoji:'👀',get:p=>p.views||0,fmt:v=>nf(Math.round(v))},
+    likes:{label:'いいね',emoji:'❤️',get:p=>p.likes||0,fmt:v=>nf(Math.round(v))},
+    eng:{label:'エンゲージ',emoji:'💬',get:p=>eng(p),fmt:v=>nf(Math.round(v))},
+    egr:{label:'EG率',emoji:'🔥',get:p=> p.views>0?eng(p)/p.views*100:0,fmt:v=>v.toFixed(1)+'%'},
+  }[metric];
+  if(!M){ app.appendChild($(`<div class="state"><p>不明な指標です</p></div>`)); return; }
+
+  app.appendChild($(`<div class="detail-title">${M.emoji} ${M.label}のくわしく</div>`));
+  app.appendChild($(`<div class="detail-sub">${periodLabel()} ・ ${posts.length}投稿</div>`));
+  if(posts.length===0){ app.appendChild($(`<div class="state"><div class="em">🍃</div><p>この期間の投稿はありません</p></div>`)); return; }
+
+  const sorted = posts.slice().sort((a,b)=>M.get(b)-M.get(a));
+  app.appendChild(buildInsight(sorted.slice(0,Math.min(5,sorted.length)), M));
+
+  app.appendChild($(`<div class="rank-label">🏆 トップ3（${M.label}が多い）</div>`));
+  sorted.slice(0,3).forEach((p)=> app.appendChild(mcard(p,M,false)));
+  app.appendChild($(`<div class="rank-label worst">🔻 ワースト3（${M.label}が少ない）</div>`));
+  sorted.slice().reverse().slice(0,3).forEach((p)=> app.appendChild(mcard(p,M,true)));
+}
+
+function mcard(p,M,isWorst){
+  const d=new Date(p.ts);
+  const date=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}時`;
+  const typ=hasMedia(p)?'🖼️':'📝';
+  const other=`👀${nf(p.views)}・❤️${nf(p.likes)}・💬${nf(p.replies)}・🔁${nf(p.reposts)}`;
+  return $(`<div class="mcard ${isWorst?'worst':''}">
+    <div class="big">${M.fmt(M.get(p))}<small>${M.label}</small></div>
+    <div class="mc-body">
+      <div class="mc-txt">${escapeHtml(p.text||'(本文なし)')}</div>
+      <div class="mc-sub">${typ} ${date} ・ ${other}${p.permalink?` ・ <a href="${p.permalink}" target="_blank" rel="noopener" style="color:var(--sage-deep);font-weight:700;">開く↗</a>`:''}</div>
+    </div>
+  </div>`);
+}
+
+function buildInsight(arr, M){
+  const n=arr.length||1;
+  const mediaPct=Math.round(arr.filter(hasMedia).length/n*100);
+  const blabels=['0-3','4-7','8-11','12-15','16-19','20-23'];
+  const bc=[0,0,0,0,0,0]; arr.forEach(p=>bc[Math.floor(new Date(p.ts).getHours()/4)]++);
+  const bestB=bc.indexOf(Math.max(...bc));
+  const kw=keywords(arr).slice(0,4).map(k=>k.word);
+  let s=`${M.label}が高い投稿の<b>共通点</b>だよ🐾<br>`;
+  s+=`・形式：<b>${mediaPct>=60?'画像・動画つきが多い（'+mediaPct+'%）':mediaPct<=40?'文字だけが多い':'画像と文字が半々'}</b><br>`;
+  if(Math.max(...bc)>0) s+=`・時間帯：<b>${blabels[bestB]}時</b>が多め<br>`;
+  if(kw.length) s+=`・よく出る言葉：<b>${kw.join(' / ')}</b>`;
+  return $(`<div class="insight">${s}</div>`);
+}
+
+// ===== 時間帯別の深掘りページ（1時間ごと＋各時間の投稿） =====
+function renderHours(app){
+  const posts = filtered();
+  app.appendChild($(`<div class="detail-title">⏰ 時間帯別のくわしく</div>`));
+  app.appendChild($(`<div class="detail-sub">1時間ごと ・ ${periodLabel()} ・ ${posts.length}投稿</div>`));
+  if(posts.length===0){ app.appendChild($(`<div class="state"><div class="em">🍃</div><p>この期間の投稿はありません</p></div>`)); return; }
+
+  const hv=Array.from({length:24},()=>({likes:0,views:0,c:0,posts:[]}));
+  posts.forEach(p=>{ const h=new Date(p.ts).getHours(); hv[h].likes+=(p.likes||0); hv[h].views+=(p.views||0); hv[h].c++; hv[h].posts.push(p); });
+  const avgL=hv.map(x=>x.c?x.likes/x.c:0);
+  const maxL=Math.max(...avgL,1);
+  const bestH=avgL.indexOf(Math.max(...avgL));
+  const bw=320/24;
+  const bars=avgL.map((v,h)=>{ const bh=Math.max(1,v/maxL*90); const x=h*bw; return `<rect x="${(x+1).toFixed(1)}" y="${(100-bh).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="${h===bestH?'#C0703F':'#8FB06A'}"/>`; }).join('');
+  app.appendChild($(`<div class="card">
+    <div class="chart-title">🟩 1時間ごとの平均いいね</div>
+    <svg viewBox="0 0 320 112" width="100%" height="112">${bars}
+      <text x="2" y="110" font-size="8" fill="#96A085">0時</text><text x="78" y="110" font-size="8" fill="#96A085">6時</text>
+      <text x="154" y="110" font-size="8" fill="#96A085">12時</text><text x="230" y="110" font-size="8" fill="#96A085">18時</text><text x="298" y="110" font-size="8" fill="#96A085">23時</text>
+    </svg>
+    <div class="peak">🐾 一番伸びる時間：<b>${bestH}時台</b>（平均❤️${nf(Math.round(avgL[bestH]))}）</div>
+  </div>`));
+
+  app.appendChild($(`<div class="rank-label">🕐 各時間に投稿しているもの</div>`));
+  for(let h=0;h<24;h++){
+    if(hv[h].c===0) continue;
+    const avL=Math.round(hv[h].likes/hv[h].c), avV=Math.round(hv[h].views/hv[h].c);
+    const plist=hv[h].posts.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).map(p=>{
+      const d=new Date(p.ts); const md=`${d.getMonth()+1}/${d.getDate()}`;
+      const typ=hasMedia(p)?'🖼️':'📝';
+      const snip=escapeHtml((p.text||'(本文なし)').replace(/\n/g,' ').slice(0,44));
+      return `<div class="hp">${typ} ${snip}<br><span class="hpm">${md} ・ 👀${nf(p.views)} ・ ❤️${nf(p.likes)} ・ 💬${nf(p.replies)}</span></div>`;
+    }).join('');
+    app.appendChild($(`<div class="hourblock">
+      <div class="hh"><span>${h}時台</span><span class="cnt">${hv[h].c}投稿 ・ 平均❤️${nf(avL)} / 👀${nf(avV)}</span></div>
+      ${plist}
+    </div>`));
+  }
+}
+
+// ===== 投稿一覧ページ =====
+function renderList(app){
+  const bar = $(`<div class="listbar">
+    <input class="search" type="text" placeholder="🔍 本文を検索…">
+    <select class="sortsel">
+      <option value="new">新しい順</option>
+      <option value="views">表示が多い順</option>
+      <option value="likes">いいねが多い順</option>
+      <option value="eng">エンゲージが多い順</option>
+      <option value="egr">EG率が高い順</option>
+    </select>
+  </div>`);
+  app.appendChild(bar);
+  const listWrap = $(`<div id="listwrap"></div>`);
+  app.appendChild(listWrap);
+
+  const search = bar.querySelector('.search');
+  const sel = bar.querySelector('.sortsel');
+  sel.value = LIST_SORT;
+  search.value = LIST_Q;
+
+  const egr = (p)=> (p.views>0 ? eng(p)/p.views*100 : 0);
+
+  function draw(){
+    let arr = filtered();
+    const q = LIST_Q.trim();
+    if(q) arr = arr.filter(p=> (p.text||'').includes(q));
+    const sorters = {
+      new:  (a,b)=> new Date(b.ts)-new Date(a.ts),
+      views:(a,b)=> (b.views||0)-(a.views||0),
+      likes:(a,b)=> (b.likes||0)-(a.likes||0),
+      eng:  (a,b)=> eng(b)-eng(a),
+      egr:  (a,b)=> egr(b)-egr(a),
+    };
+    arr = arr.slice().sort(sorters[LIST_SORT]||sorters.new);
+
+    if(arr.length===0){ listWrap.innerHTML = '<div class="state"><div class="em">🍃</div><p>該当する投稿がありません</p></div>'; return; }
+
+    listWrap.innerHTML = `<div class="listcount">${arr.length}件を表示</div>` + arr.map(p=>{
+      const d = new Date(p.ts);
+      const date = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      const typ = hasMedia(p) ? '🖼️ 画像/動画' : '📝 文字';
+      return `<div class="pcard">
+        <div class="pmeta"><span>${typ} ・ ${date}</span>${p.permalink?`<a class="plink" href="${p.permalink}" target="_blank" rel="noopener">開く ↗</a>`:''}</div>
+        <div class="ptext">${escapeHtml(p.text||'(本文なし)')}</div>
+        <div class="pmetrics">
+          <div class="mt"><span>👀</span><b>${nf(p.views)}</b><i>表示</i></div>
+          <div class="mt"><span>❤️</span><b>${nf(p.likes)}</b><i>いいね</i></div>
+          <div class="mt"><span>💬</span><b>${nf(p.replies)}</b><i>返信</i></div>
+          <div class="mt"><span>🔁</span><b>${nf(p.reposts)}</b><i>リポスト</i></div>
+          <div class="mt"><span>✍️</span><b>${nf(p.quotes)}</b><i>引用</i></div>
+          <div class="mt hlmt"><span>🔥</span><b>${egr(p).toFixed(1)}%</b><i>EG率</i></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  search.oninput = ()=>{ LIST_Q = search.value; draw(); };
+  sel.onchange = ()=>{ LIST_SORT = sel.value; draw(); };
+  draw();
 }
 
 load();
