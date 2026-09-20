@@ -37,6 +37,9 @@
   .views{display:flex;gap:6px;padding:14px 0 0;}
   .views .vt{flex:1;text-align:center;font-size:12.5px;font-weight:700;padding:11px 0;border-radius:13px;background:var(--card);color:var(--muted);border:1px solid var(--line);cursor:pointer;}
   .views .vt.on{background:var(--brown);color:#fff;border-color:var(--brown);}
+  .ranktabs{display:flex;gap:6px;margin:0 0 11px;overflow-x:auto;padding-bottom:3px;-webkit-overflow-scrolling:touch;}
+  .ranktabs .rt{flex:0 0 auto;font-size:11.5px;font-weight:700;padding:7px 13px;border-radius:999px;background:var(--card);color:var(--muted);border:1px solid var(--line);cursor:pointer;white-space:nowrap;}
+  .ranktabs .rt.on{background:var(--sage-deep);color:#fff;border-color:var(--sage-deep);}
   .listbar{display:flex;gap:8px;margin-top:16px;}
   .listbar .search{flex:1;min-width:0;border:1px solid var(--line);border-radius:12px;padding:10px 13px;font-size:13px;font-family:inherit;color:var(--text);background:var(--card);}
   .listbar .sortsel{border:1px solid var(--line);border-radius:12px;padding:10px 8px;font-size:12px;font-family:inherit;color:var(--text);background:var(--card);}
@@ -197,6 +200,7 @@ let DATA = null;
 let PERIOD = 'all';
 let VIEW = 'dashboard';
 let VIEW_METRIC = 'views';
+let RANK_MODE = 'total';
 let LIST_SORT = 'new';
 let LIST_Q = '';
 
@@ -415,18 +419,43 @@ function render(){
     </div>`));
   }
 
-  // ---- ランキング ----
+  // ---- ランキング（総合＋種類別 切り替え） ----
   const avgEng = totalEng/n;
-  const top = posts.slice().sort((a,b)=>eng(b)-eng(a)).slice(0,5);
-  const rows = top.map((p,i)=>{
-    const mult = avgEng>0? (eng(p)/avgEng).toFixed(1):'—';
-    const txt = (p.text||'(本文なし)').replace(/\n/g,' ');
-    return `<div class="rk"><a href="${p.permalink||'#'}" target="_blank" rel="noopener">
-      <div class="no ${i<2?'top':''}">${i+1}</div>
-      <div class="tx"><div class="p">${escapeHtml(txt)}</div><div class="m">👀 ${nf(p.views)} ・ ❤️ ${nf(p.likes)} ・ 💬 ${nf(p.replies)}</div></div>
-      <div class="mult">平均×${mult}</div></a></div>`;
-  }).join('');
-  app.appendChild($(`<div class="sec"><div class="sec-h">ウケた投稿ランキング<span class="ln"></span></div><div class="card">${rows}</div></div>`));
+  const rankSec = $(`<div class="sec">
+    <div class="sec-h">投稿ランキング<span class="ln"></span><span class="mini">${periodLabel()}</span></div>
+    <div class="ranktabs">
+      <div class="rt" data-m="total">🏆 総合</div>
+      <div class="rt" data-m="likes">❤️ いいね</div>
+      <div class="rt" data-m="views">👀 表示</div>
+      <div class="rt" data-m="replies">💬 コメント</div>
+      <div class="rt" data-m="egr">🔥 EG率</div>
+    </div>
+    <div class="card" id="rankcard"></div>
+  </div>`);
+  app.appendChild(rankSec);
+  const rankCard = rankSec.querySelector('#rankcard');
+  const rankTabs = rankSec.querySelectorAll('.rt');
+  const RANKERS = {
+    total:  {g:p=>eng(p),                         big:p=>'平均×'+(avgEng>0?(eng(p)/avgEng).toFixed(1):'—'), sub:p=>`👀${nf(p.views)} ・ ❤️${nf(p.likes)} ・ 💬${nf(p.replies)}`},
+    likes:  {g:p=>p.likes||0,                     big:p=>'❤️'+nf(p.likes),  sub:p=>`👀${nf(p.views)} ・ 💬${nf(p.replies)} ・ 🔁${nf(p.reposts)}`},
+    views:  {g:p=>p.views||0,                     big:p=>'👀'+nf(p.views),  sub:p=>`❤️${nf(p.likes)} ・ 💬${nf(p.replies)} ・ 🔁${nf(p.reposts)}`},
+    replies:{g:p=>p.replies||0,                   big:p=>'💬'+nf(p.replies), sub:p=>`👀${nf(p.views)} ・ ❤️${nf(p.likes)} ・ 🔁${nf(p.reposts)}`},
+    egr:    {g:p=>p.views>0?eng(p)/p.views*100:0, big:p=>'🔥'+(p.views>0?(eng(p)/p.views*100).toFixed(1):'0.0')+'%', sub:p=>`👀${nf(p.views)} ・ ❤️${nf(p.likes)} ・ 💬${nf(p.replies)}`},
+  };
+  function drawRank(){
+    rankTabs.forEach(t=> t.classList.toggle('on', t.dataset.m===RANK_MODE));
+    const M = RANKERS[RANK_MODE] || RANKERS.total;
+    const arr = posts.slice().sort((a,b)=>M.g(b)-M.g(a)).slice(0,5);
+    rankCard.innerHTML = arr.map((p,i)=>{
+      const txt=(p.text||'(本文なし)').replace(/\n/g,' ');
+      return `<div class="rk"><a href="${p.permalink||'#'}" target="_blank" rel="noopener">
+        <div class="no ${i<2?'top':''}">${i+1}</div>
+        <div class="tx"><div class="p">${escapeHtml(txt)}</div><div class="m">${M.sub(p)}</div></div>
+        <div class="mult">${M.big(p)}</div></a></div>`;
+    }).join('');
+  }
+  rankTabs.forEach(t=> t.onclick=()=>{ RANK_MODE=t.dataset.m; drawRank(); });
+  drawRank();
 
   // ---- アドバイス ----
   app.appendChild($(`<div class="sec">
