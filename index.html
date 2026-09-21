@@ -84,6 +84,12 @@
   .wk-x span{font-size:8.5px;color:var(--muted);flex:1;text-align:center;}
   .wk-y{font-size:10px;color:var(--muted);margin-bottom:8px;}
   .wk-y b{color:var(--brown);}
+  .foladd{display:flex;gap:7px;margin-top:11px;}
+  .foladd input{border:1px solid var(--line);border-radius:10px;padding:9px;font-size:12px;font-family:inherit;background:var(--card);color:var(--text);min-width:0;}
+  .foladd .fdate{flex:1.2;}
+  .foladd .fnum{flex:1;}
+  .foladd .fbtn{background:var(--sage-deep);color:#fff;border:none;border-radius:10px;padding:0 14px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .foladd .fbtn:active{transform:scale(.96);}
   .repintro{font-size:12.5px;color:var(--text);line-height:1.85;margin-bottom:14px;}
   .repintro b{color:var(--sage-deep);}
   .repsteps{background:var(--sage-soft);border-radius:14px;padding:13px 16px;font-size:12px;color:var(--sage-deep);line-height:2;margin-bottom:16px;}
@@ -93,6 +99,13 @@
   .copybtn.done{background:var(--sage-deep);}
   .repnote{font-size:11px;color:var(--muted);margin-top:14px;margin-bottom:6px;}
   .reptext{width:100%;height:150px;border:1px solid var(--line);border-radius:12px;padding:11px;font-size:10.5px;font-family:ui-monospace,monospace;color:var(--muted);background:var(--card);resize:vertical;line-height:1.5;}
+  .profbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px;margin-bottom:16px;}
+  .profbox h4{font-size:13px;color:var(--brown);margin-bottom:4px;font-weight:700;font-family:var(--serif);}
+  .profbox .pnote{font-size:10.5px;color:var(--muted);margin-bottom:13px;line-height:1.6;}
+  .proffield{margin-bottom:11px;}
+  .proffield label{display:block;font-size:11px;font-weight:700;color:var(--sage-deep);margin-bottom:4px;}
+  .proffield textarea{width:100%;height:54px;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:12px;font-family:inherit;color:var(--text);background:var(--bg);resize:vertical;line-height:1.55;}
+  .proffield textarea:focus{outline:none;border-color:var(--sage);}
 
   .sec{margin-top:24px;}
   .sec-h{font-family:var(--serif);font-weight:600;font-size:15px;color:var(--brown);margin:0 2px 11px;letter-spacing:.05em;display:flex;align-items:center;gap:8px;}
@@ -212,6 +225,15 @@ let VIEW_METRIC = 'views';
 let RANK_MODE = 'total';
 let LIST_SORT = 'new';
 let LIST_Q = '';
+let PROFILE = {target:'',goal:'',theme:'',focus:''};
+try{ const _s=JSON.parse(localStorage.getItem('nyanseki_profile_v1')); if(_s) PROFILE={...PROFILE,..._s}; }catch(e){}
+function saveProfile(){ try{ localStorage.setItem('nyanseki_profile_v1', JSON.stringify(PROFILE)); }catch(e){} }
+
+// フォロワー数の推移（毎日スマホ内に記録して育てる）
+const FKEY='nyanseki_followers_v1';
+function loadFollowers(){ try{ return JSON.parse(localStorage.getItem(FKEY))||{}; }catch(e){ return {}; } }
+function saveFollowers(o){ try{ localStorage.setItem(FKEY, JSON.stringify(o)); }catch(e){} }
+function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 async function load(){
   try{
@@ -227,6 +249,8 @@ async function load(){
       return !(noText && noData);
     });
     DATA.count = DATA.posts.length;
+    // 今日のフォロワー数を記録（推移グラフ用）
+    if(DATA.followers!=null){ try{ const _f=loadFollowers(); _f[todayStr()]=DATA.followers; saveFollowers(_f); }catch(e){} }
     document.getElementById('brandsub').textContent = (d.username? '@'+d.username+' ・ ' : '') + '全'+DATA.count+'投稿を分析';
     render();
   }catch(e){ renderError(String(e.message||e)); }
@@ -327,6 +351,11 @@ function render(){
   </div>`);
   app.appendChild(sumSec);
   sumSec.querySelectorAll('.kpi[data-metric]').forEach(k=>{ k.onclick=()=>{ VIEW='metric'; VIEW_METRIC=k.dataset.metric; render(); window.scrollTo({top:0,behavior:'smooth'}); }; });
+
+  // フォロワーの推移
+  const folWrap = $(`<div class="sec"></div>`);
+  app.appendChild(folWrap);
+  drawFollowers(folWrap);
 
   // ---- 時間帯別（4時間×6バケツ） ----
   const buckets = [0,0,0,0,0,0].map(()=>({likes:0,views:0,c:0}));
@@ -512,6 +541,54 @@ function advice(posts,x){
   return msg;
 }
 
+// ===== フォロワーの推移グラフ（毎日記録して育てる／過去は手入力OK） =====
+function drawFollowers(wrap){
+  const f = loadFollowers();
+  const dates = Object.keys(f).sort();
+  const cur = (DATA && DATA.followers!=null) ? DATA.followers : (dates.length? f[dates[dates.length-1]] : null);
+  const lab = (ds)=>{ const p=ds.split('-'); return `${+p[1]}/${+p[2]}`; };
+
+  let inner = `<div class="sec-h">📈 フォロワーの推移<span class="ln"></span>${cur!=null?`<span class="mini">現在 ${nf(cur)}人</span>`:''}</div>`;
+
+  if(dates.length>=2){
+    const vals = dates.map(d=>f[d]);
+    const min = Math.min(...vals), max = Math.max(...vals), range=(max-min)||1, n=vals.length;
+    const xy = (v,i)=>{ const x = n===1?160:(12+i*(296/(n-1))); const y = 112-((v-min)/range)*84; return [x,y]; };
+    const pts = vals.map((v,i)=>{ const [x,y]=xy(v,i); return `${x.toFixed(0)},${y.toFixed(0)}`; }).join(' ');
+    const dots = vals.map((v,i)=>{ const [x,y]=xy(v,i); return `<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="3" fill="#6E9A4E"/>`; }).join('');
+    const diff = vals[vals.length-1]-vals[0];
+    inner += `<div class="card">
+      <div class="wk-y">記録開始から <b>${(diff>=0?'+':'')+nf(diff)}人</b> ／ ${dates.length}日分（最小${nf(min)}〜最大${nf(max)}）</div>
+      <svg viewBox="0 0 320 124" width="100%" height="124">
+        <line x1="0" y1="24" x2="320" y2="24" stroke="#EAE1D2"/><line x1="0" y1="68" x2="320" y2="68" stroke="#EAE1D2"/><line x1="0" y1="112" x2="320" y2="112" stroke="#EAE1D2"/>
+        <polyline points="${pts}" fill="none" stroke="#6E9A4E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${dots}
+      </svg>
+      <div class="wk-x"><span>${lab(dates[0])}</span>${dates.length>2?`<span>${lab(dates[Math.floor(n/2)])}</span>`:''}<span>${lab(dates[dates.length-1])}</span></div>
+    </div>`;
+  } else {
+    inner += `<div class="card"><div class="state" style="padding:20px 12px;background:transparent;box-shadow:none;border:none;">
+      <div class="em">🌱</div>
+      <p>記録スタート！${cur!=null?`今日は <b>${nf(cur)}人</b>。`:''}<br>アプリを開くたびに点が増えて、線が育ちます📈<br><small>過去の数字がわかれば、下から手入力で足せます</small></p>
+    </div></div>`;
+  }
+
+  inner += `<div class="foladd">
+    <input type="date" class="fdate">
+    <input type="number" class="fnum" placeholder="人数" inputmode="numeric">
+    <button class="fbtn">＋記録</button>
+  </div>`;
+
+  wrap.innerHTML = inner;
+  const di=wrap.querySelector('.fdate'), ni=wrap.querySelector('.fnum'), btn=wrap.querySelector('.fbtn');
+  di.value = todayStr();
+  btn.onclick = ()=>{
+    const d=di.value, v=parseInt(ni.value,10);
+    if(!d || isNaN(v)){ ni.focus(); return; }
+    const cur2=loadFollowers(); cur2[d]=v; saveFollowers(cur2); ni.value='';
+    drawFollowers(wrap);
+  };
+}
+
 // ===== くわしい戦略レポート（コピペ方式・月額内でClaudeに分析してもらう） =====
 function patternOf(p){
   const t = p.text || '';
@@ -543,8 +620,15 @@ function buildReportPrompt(posts){
     postLines += `[${dt}｜${patternOf(p)}｜${hasMedia(p)?'画像/動画':'文字'}] 表示${p.views} いいね${p.likes} コメント${p.replies} リポスト${p.reposts} 引用${p.quotes}\n本文：${t}\n\n`;
   });
 
+  const prof=[];
+  if(PROFILE.target) prof.push('・ターゲット（届けたい相手）：'+PROFILE.target.replace(/\n/g,' '));
+  if(PROFILE.goal)   prof.push('・発信のゴール：'+PROFILE.goal.replace(/\n/g,' '));
+  if(PROFILE.theme)  prof.push('・テーマ／強み・作風：'+PROFILE.theme.replace(/\n/g,' '));
+  if(PROFILE.focus)  prof.push('・特に知りたいこと：'+PROFILE.focus.replace(/\n/g,' '));
+  const profBlock = prof.length ? `\n\n【この発信者について（必ず分析の前提にしてください）】\n${prof.join('\n')}` : '';
+
   return `あなたは、Threadsの発信を伸ばすプロの分析コンサルタントです。
-以下の私のThreadsデータをもとに、次のフォーマットで具体的な戦略レポートを書いてください。ふわっとした感想や励ましより、データに基づいた鋭い読み解きと、明日から動ける具体策を優先してください。
+以下の私のThreadsデータをもとに、次のフォーマットで具体的な戦略レポートを書いてください。ふわっとした感想や励ましより、データに基づいた鋭い読み解きと、明日から動ける具体策を優先してください。${profBlock}
 
 【出力フォーマット】
 ■ 30秒まとめ（1行で今の状態を言い切る）
@@ -573,14 +657,31 @@ function renderReport(app){
   app.appendChild($(`<div class="detail-sub">${periodLabel()} ・ ${posts.length}投稿</div>`));
   if(posts.length===0){ app.appendChild($(`<div class="state"><div class="em">🍃</div><p>この期間の投稿はありません</p></div>`)); return; }
 
-  app.appendChild($(`<div class="repintro">下のボタンでデータをコピーして、<b>Claudeのチャット（claude.ai）の新しいチャット</b>に貼って送信するだけ。あなたのデータをもとに、コンサル級の戦略レポートを書いてくれます🐾（<b>月額の範囲でOK・追加料金なし</b>）</div>`));
+  const ta = $(`<textarea class="reptext" readonly></textarea>`);
+
+  // あなたのこと（分析の前提）→ コピー文に自動で含める
+  const prof = $(`<div class="profbox"><h4>🎯 あなたのこと（分析の精度がグッと上がる）</h4><div class="pnote">誰に・何のために発信してるかを書くと、Claudeがあなたの狙いに沿って分析してくれます。一度書けば保存されます🐱</div></div>`);
+  [
+    ['target','ターゲット（誰に届けたい？）','例：在宅ワークを始めたママ。頑張りすぎ気味で、無理しない働き方に憧れてる'],
+    ['goal','発信のゴール（何を目指す？）','例：noteの記事を買ってほしい／フォロワーを増やしたい／コミュニティを作りたい'],
+    ['theme','テーマ・強み・作風','例：暮らしと働き方。やさしい語り口。Canva発信。実体験ベース'],
+    ['focus','特に分析で知りたいこと','例：コメントを増やすには？／告知が伸びない理由／伸びる型を知りたい'],
+  ].forEach(([k,label,ph])=>{
+    const f = $(`<div class="proffield"><label>${label}</label><textarea placeholder="${ph}"></textarea></div>`);
+    const t = f.querySelector('textarea');
+    t.value = PROFILE[k] || '';
+    t.oninput = ()=>{ PROFILE[k]=t.value; saveProfile(); ta.value=buildReportPrompt(posts); };
+    prof.appendChild(f);
+  });
+  app.appendChild(prof);
+
+  app.appendChild($(`<div class="repintro">下のボタンでデータをコピーして、<b>Claudeのチャット（claude.ai）の新しいチャット</b>に貼って送信するだけ。上の「あなたのこと」も一緒にコピーされます🐾（<b>月額の範囲でOK・追加料金なし</b>）</div>`));
   app.appendChild($(`<div class="repsteps"><b>使い方（3ステップ）</b><br>① 下の「分析用データをコピー」を押す<br>② <b>claude.ai</b> を開いて「＋新しいチャット」<br>③ 貼り付けて送信 → レポート完成！✨</div>`));
 
-  const payload = buildReportPrompt(posts);
   const btn = $(`<button class="copybtn">📋 分析用データをコピー</button>`);
-  const ta = $(`<textarea class="reptext" readonly></textarea>`);
-  ta.value = payload;
   btn.onclick = async ()=>{
+    const payload = buildReportPrompt(posts);
+    ta.value = payload;
     let ok=false;
     try{ await navigator.clipboard.writeText(payload); ok=true; }
     catch(e){ try{ ta.focus(); ta.select(); ok=document.execCommand('copy'); }catch(_){} }
@@ -590,6 +691,7 @@ function renderReport(app){
   };
   app.appendChild(btn);
   app.appendChild($(`<div class="repnote">↓ コピーされる内容（確認用。うまくコピーできない時はこの枠から手動で）</div>`));
+  ta.value = buildReportPrompt(posts);
   app.appendChild(ta);
 }
 
