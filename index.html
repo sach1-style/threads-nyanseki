@@ -123,6 +123,16 @@
   .pprow:last-child{border-bottom:none;}
   .pprow .pp-m{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5;}
   .pprow .pp-del{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;flex-shrink:0;padding:2px 4px;}
+  .qaxis{font-size:10px;color:var(--muted);font-weight:700;margin:2px 0;}
+  .qgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:7px 0;}
+  .qcell{position:relative;border:1px solid var(--line);border-left-width:5px;border-radius:12px;padding:11px 12px;background:var(--bg);}
+  .qtop{position:absolute;right:7px;top:7px;font-size:9px;font-weight:700;color:#fff;background:var(--terra);border-radius:6px;padding:1px 6px;}
+  .qcell .q-head{font-size:10.5px;color:var(--muted);line-height:1.4;}
+  .qcell .q-head b{font-family:var(--serif);font-size:14px;}
+  .qcell .q-n{font-family:var(--serif);font-weight:700;font-size:22px;margin-top:4px;line-height:1.1;}
+  .qcell .q-n span{font-size:10.5px;color:var(--muted);font-family:var(--sans);font-weight:400;}
+  .qcell .q-bar{height:6px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:9px;}
+  .qcell .q-bar i{display:block;height:100%;border-radius:999px;}
   .repintro{font-size:12.5px;color:var(--text);line-height:1.85;margin-bottom:14px;}
   .repintro b{color:var(--sage-deep);}
   .repsteps{background:var(--sage-soft);border-radius:14px;padding:13px 16px;font-size:12px;color:var(--sage-deep);line-height:2;margin-bottom:16px;}
@@ -760,12 +770,18 @@ function drawLogAgg(agg){
   const ppl=loadPeople();
   if(ppl.length){
     const cnt={A:0,B:0,C:0,D:0}; ppl.forEach(p=>{ if(cnt[p.box]!=null) cnt[p.box]++; });
-    const den=ppl.length||1;
-    const seg=(v,c)=>`<i style="width:${Math.round(v/den*100)}%;background:${c}"></i>`;
-    html+=`<div class="sec-h" style="margin-top:18px;">🧺 届けられる人の割合（計${ppl.length}人）<span class="ln"></span></div><div class="card">
-      <div class="stack">${seg(cnt.A,BOXCOLOR.A)}${seg(cnt.B,BOXCOLOR.B)}${seg(cnt.C,BOXCOLOR.C)}${seg(cnt.D,BOXCOLOR.D)}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.7;">A在宅${cnt.A}・B暮らし${cnt.B}・Cクリエイター${cnt.C}・Dその他${cnt.D}</div>
-    </div>`;
+    const max=Math.max(cnt.A,cnt.B,cnt.C,cnt.D,1); const den=ppl.length;
+    const cell=(g,label)=>{ const c=cnt[g]; const w=Math.round(c/max*100); const pct=Math.round(c/den*100); const top=(c===max&&c>0);
+      return `<div class="qcell" style="border-left-color:${BOXCOLOR[g]}">${top?'<span class="qtop">最多</span>':''}
+        <div class="q-head"><b style="color:${BOXCOLOR[g]}">${g}</b> ${label}</div>
+        <div class="q-n" style="color:${BOXCOLOR[g]}">${c}<span>人 / ${pct}%</span></div>
+        <div class="q-bar"><i style="width:${w}%;background:${BOXCOLOR[g]}"></i></div></div>`; };
+    html+=`<div class="sec-h" style="margin-top:18px;">🧺 届けられる人マップ（計${den}人）<span class="ln"></span></div>
+      <div class="card">
+        <div class="qaxis">↑ おうちビジネス寄り</div>
+        <div class="qgrid">${cell('A',BOXES.A)}${cell('C',BOXES.C)}${cell('B',BOXES.B)}${cell('D',BOXES.D)}</div>
+        <div class="qaxis" style="text-align:right;">暮らし・プライベート寄り ↓</div>
+      </div>`;
   }
   agg.innerHTML=html;
 }
