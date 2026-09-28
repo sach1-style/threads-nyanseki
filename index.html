@@ -90,6 +90,29 @@
   .foladd .fnum{flex:1;}
   .foladd .fbtn{background:var(--sage-deep);color:#fff;border:none;border-radius:10px;padding:0 14px;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;}
   .foladd .fbtn:active{transform:scale(.96);}
+  .logform label{display:block;font-size:11px;font-weight:700;color:var(--sage-deep);margin:11px 0 4px;}
+  .logform input,.logform textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);}
+  .logform textarea{height:52px;resize:vertical;line-height:1.5;}
+  .abtoggle{display:flex;gap:8px;}
+  .abtoggle .ab{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:12.5px;font-weight:700;background:var(--card);color:var(--muted);cursor:pointer;font-family:inherit;}
+  .abtoggle .ab.on{background:var(--sage-deep);color:#fff;border-color:var(--sage-deep);}
+  .lg-pick{width:100%;margin-top:13px;background:var(--sage-soft);color:var(--sage-deep);border:1px dashed var(--sage);border-radius:10px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .lg-picklist{margin-top:6px;}
+  .pickrow{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;margin-top:6px;cursor:pointer;background:var(--card);}
+  .pickrow .pk-m{color:var(--muted);white-space:nowrap;font-size:11px;}
+  .picknone{font-size:11.5px;color:var(--muted);padding:8px;}
+  .lg-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;}
+  .lg-save,.wk-save{width:100%;margin-top:15px;background:var(--brown);color:#fff;border:none;border-radius:12px;padding:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .lg-save:active,.wk-save:active{transform:scale(.98);}
+  .abtable{width:100%;border-collapse:collapse;margin-top:6px;}
+  .abtable th,.abtable td{border-bottom:1px solid var(--line);padding:8px 6px;font-size:13px;text-align:center;}
+  .abtable td:first-child,.abtable th:first-child{text-align:left;color:var(--muted);font-size:12px;font-family:var(--sans);}
+  .abtable th,.abtable td{font-family:var(--serif);color:var(--brown);}
+  .logrow{position:relative;padding:10px 28px 10px 0;border-bottom:1px solid var(--line);cursor:pointer;}
+  .logrow:last-child{border-bottom:none;}
+  .logrow .lr-main{font-size:13px;color:var(--brown);}
+  .logrow .lr-sub{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.55;}
+  .logrow .lr-del{position:absolute;right:0;top:9px;background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px;}
   .repintro{font-size:12.5px;color:var(--text);line-height:1.85;margin-bottom:14px;}
   .repintro b{color:var(--sage-deep);}
   .repsteps{background:var(--sage-soft);border-radius:14px;padding:13px 16px;font-size:12px;color:var(--sage-deep);line-height:2;margin-bottom:16px;}
@@ -235,6 +258,18 @@ function loadFollowers(){ try{ return JSON.parse(localStorage.getItem(FKEY))||{}
 function saveFollowers(o){ try{ localStorage.setItem(FKEY, JSON.stringify(o)); }catch(e){} }
 function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
+// 記録（毎晩の記録・週1の箱分け）
+const LOGKEY='nyanseki_log_v1', WEEKKEY='nyanseki_weekly_v1';
+let LOG_DATE = todayStr();
+let WEEK_DATE = todayStr();
+function loadLog(){ try{ return JSON.parse(localStorage.getItem(LOGKEY))||{}; }catch(e){ return {}; } }
+function saveLog(o){ try{ localStorage.setItem(LOGKEY, JSON.stringify(o)); }catch(e){} }
+function loadWeek(){ try{ return JSON.parse(localStorage.getItem(WEEKKEY))||{}; }catch(e){ return {}; } }
+function saveWeek(o){ try{ localStorage.setItem(WEEKKEY, JSON.stringify(o)); }catch(e){} }
+function typeByDate(ds){ const d=new Date(ds); return (d.getDate()%2===1)?'A':'B'; } // 奇数=A(画像あり) / 偶数=B(画像なし)
+function dateOf(ts){ const d=new Date(ts); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function numOrNull(v){ const n=parseInt(v,10); return isNaN(n)?null:n; }
+
 async function load(){
   try{
     const r = await fetch('/api/insights');
@@ -294,6 +329,7 @@ function viewTabsEl(){
   const nav = $(`<div class="views">
     <div class="vt" data-v="dashboard">📊 ダッシュボード</div>
     <div class="vt" data-v="list">📋 投稿一覧</div>
+    <div class="vt" data-v="log">✏️ 記録</div>
   </div>`);
   nav.querySelectorAll('.vt').forEach(t=>{
     if(t.dataset.v===VIEW) t.classList.add('on');
@@ -321,6 +357,7 @@ function render(){
     return;
   }
   app.appendChild(viewTabsEl());
+  if(VIEW==='log'){ renderLog(app); return; }
   app.appendChild(periodTabsEl());
   if(VIEW==='list'){ renderList(app); return; }
 
@@ -587,6 +624,135 @@ function drawFollowers(wrap){
     const cur2=loadFollowers(); cur2[d]=v; saveFollowers(cur2); ni.value='';
     drawFollowers(wrap);
   };
+}
+
+// ===== ✏️ 記録ページ（毎晩の記録・週1の箱・集計） =====
+function renderLog(app){
+  app.appendChild($(`<div class="detail-title">✏️ 記録</div>`));
+  app.appendChild($(`<div class="detail-sub">寝る前に1〜2分。A/B比較と本命の記録用（10月〜）</div>`));
+  const f1=$(`<div class="sec"></div>`); app.appendChild(f1); drawLogForm(f1);
+  const f2=$(`<div class="sec"></div>`); app.appendChild(f2); drawWeekForm(f2);
+  const f3=$(`<div class="sec"></div>`); app.appendChild(f3); drawLogAgg(f3);
+  const f4=$(`<div class="sec"></div>`); app.appendChild(f4); drawFollowers(f4);
+  const f5=$(`<div class="sec"></div>`); app.appendChild(f5); drawLogList(f5);
+}
+
+function drawLogForm(wrap){
+  const logs=loadLog(); const d=LOG_DATE; const rec=logs[d]||{}; const typ=rec.type||typeByDate(d);
+  wrap.innerHTML=`
+    <div class="sec-h">🌙 今夜の記録<span class="ln"></span></div>
+    <div class="card logform">
+      <label>日付</label><input type="date" class="lg-date" value="${d}">
+      <label>ツリーの種類（奇数日A・偶数日B）</label>
+      <div class="abtoggle">
+        <button class="ab ${typ==='A'?'on':''}" data-ab="A">A 画像あり</button>
+        <button class="ab ${typ==='B'?'on':''}" data-ab="B">B 画像なし</button>
+      </div>
+      <button class="lg-pick">📥 今日の投稿から選ぶ（表示・本文いいねを自動入力）</button>
+      <div class="lg-picklist"></div>
+      <div class="lg-grid" style="margin-top:12px;">
+        <div><label>👀 表示</label><input type="number" class="lg-views" inputmode="numeric" value="${rec.views??''}"></div>
+        <div><label>❤️ 本文のいいね</label><input type="number" class="lg-likes" inputmode="numeric" value="${rec.likes??''}"></div>
+        <div><label>💬 返信のいいね</label><input type="number" class="lg-rlikes" inputmode="numeric" value="${rec.replyLikes??''}"></div>
+        <div><label>👥 フォロワー数</label><input type="number" class="lg-fol" inputmode="numeric" value="${rec.followers??(DATA&&DATA.followers!=null?DATA.followers:'')}"></div>
+        <div><label>📈 noteページビュー</label><input type="number" class="lg-pv" inputmode="numeric" value="${rec.pv??''}"></div>
+        <div><label>💰 note売上(円)</label><input type="number" class="lg-sales" inputmode="numeric" value="${rec.sales??''}"></div>
+        <div><label>🎯 本命の話ができた人数</label><input type="number" class="lg-honmei" inputmode="numeric" value="${rec.honmei??''}"></div>
+      </div>
+      <label>🗣️ 気になった声（一言）</label><textarea class="lg-voice" placeholder="コメントの中身など">${rec.voice?escapeHtml(rec.voice):''}</textarea>
+      <button class="lg-save">${logs[d]?'この日の記録を更新する':'保存する'}</button>
+    </div>`;
+  const q=(s)=>wrap.querySelector(s);
+  q('.lg-date').onchange=(e)=>{ LOG_DATE=e.target.value; drawLogForm(wrap); };
+  wrap.querySelectorAll('.ab').forEach(b=> b.onclick=()=>{ wrap.querySelectorAll('.ab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  q('.lg-pick').onclick=()=>{
+    const pl=q('.lg-picklist');
+    if(pl.innerHTML){ pl.innerHTML=''; return; }
+    const day=(DATA&&DATA.posts?DATA.posts:[]).filter(p=>dateOf(p.ts)===LOG_DATE).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    if(!day.length){ pl.innerHTML=`<div class="picknone">この日の投稿が見つかりません。手入力してね🖐️（アプリを開いた日以降のみ拾えます）</div>`; return; }
+    pl.innerHTML=day.map((p,i)=>{ const t=new Date(p.ts); const hm=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; const s=escapeHtml((p.text||'(本文なし)').replace(/\n/g,' ').slice(0,30)); return `<div class="pickrow" data-i="${i}"><span>${hm} ${s}</span><span class="pk-m">👀${nf(p.views)} ❤️${nf(p.likes)}</span></div>`; }).join('');
+    pl.querySelectorAll('.pickrow').forEach(r=>{ r.onclick=()=>{ const p=day[+r.dataset.i]; q('.lg-views').value=p.views??''; q('.lg-likes').value=p.likes??''; pl.innerHTML=''; }; });
+  };
+  q('.lg-save').onclick=()=>{
+    const logs=loadLog();
+    logs[LOG_DATE]={
+      type: wrap.querySelector('.ab.on')?.dataset.ab || typeByDate(LOG_DATE),
+      views:numOrNull(q('.lg-views').value), likes:numOrNull(q('.lg-likes').value), replyLikes:numOrNull(q('.lg-rlikes').value),
+      followers:numOrNull(q('.lg-fol').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value),
+      honmei:numOrNull(q('.lg-honmei').value), voice:q('.lg-voice').value.trim()
+    };
+    saveLog(logs);
+    const fol=numOrNull(q('.lg-fol').value); if(fol!=null){ const ff=loadFollowers(); ff[LOG_DATE]=fol; saveFollowers(ff); }
+    render(); window.scrollTo({top:0,behavior:'smooth'});
+  };
+}
+
+function drawWeekForm(wrap){
+  const weeks=loadWeek(); const d=WEEK_DATE; const w=weeks[d]||{};
+  wrap.innerHTML=`
+    <div class="sec-h">🧺 週1（金）新フォロワーの箱<span class="ln"></span></div>
+    <div class="card logform">
+      <label>日付</label><input type="date" class="wk-date" value="${d}">
+      <div class="lg-grid" style="margin-top:6px;">
+        <div><label>A 在宅・おうちビジネス</label><input type="number" class="wk-a" inputmode="numeric" value="${w.a??''}"></div>
+        <div><label>B 暮らし・子育て</label><input type="number" class="wk-b" inputmode="numeric" value="${w.b??''}"></div>
+        <div><label>C AIアート・クリエイター</label><input type="number" class="wk-c" inputmode="numeric" value="${w.c??''}"></div>
+        <div><label>D その他</label><input type="number" class="wk-d" inputmode="numeric" value="${w.d??''}"></div>
+      </div>
+      <label>印象に残った人のメモ</label><textarea class="wk-memo">${w.memo?escapeHtml(w.memo):''}</textarea>
+      <button class="wk-save">${weeks[d]?'更新する':'保存する'}</button>
+    </div>`;
+  wrap.querySelector('.wk-date').onchange=(e)=>{ WEEK_DATE=e.target.value; drawWeekForm(wrap); };
+  wrap.querySelector('.wk-save').onclick=()=>{
+    const weeks=loadWeek();
+    weeks[WEEK_DATE]={ a:numOrNull(wrap.querySelector('.wk-a').value)||0, b:numOrNull(wrap.querySelector('.wk-b').value)||0, c:numOrNull(wrap.querySelector('.wk-c').value)||0, d:numOrNull(wrap.querySelector('.wk-d').value)||0, memo:wrap.querySelector('.wk-memo').value.trim() };
+    saveWeek(weeks); render(); window.scrollTo({top:0,behavior:'smooth'});
+  };
+}
+
+function drawLogAgg(agg){
+  const logs=loadLog(); const weeks=loadWeek();
+  const arr=Object.entries(logs).map(([d,r])=>({d,...r}));
+  const stat=(type,key)=>{ const xs=arr.filter(r=>r.type===type && r[key]!=null).map(r=>r[key]); return xs.length? Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null; };
+  const cntA=arr.filter(r=>r.type==='A').length, cntB=arr.filter(r=>r.type==='B').length;
+  const honmei=arr.reduce((a,r)=>a+(r.honmei||0),0);
+  const sales=arr.reduce((a,r)=>a+(r.sales||0),0);
+  const cell=(v)=> v==null?'—':nf(v);
+  const rowAB=(label,k)=>`<tr><td>${label}</td><td>${cell(stat('A',k))}</td><td>${cell(stat('B',k))}</td></tr>`;
+  let html=`<div class="sec-h">📊 集計<span class="ln"></span></div>
+    <div class="card">
+      <div class="chart-title">A（画像あり・${cntA}日） vs B（画像なし・${cntB}日）の平均</div>
+      <table class="abtable"><tr><th></th><th>A🖼️</th><th>B📝</th></tr>
+        ${rowAB('👀 表示','views')}${rowAB('❤️ 本文いいね','likes')}${rowAB('💬 返信いいね','replyLikes')}
+      </table>
+      <div class="peak">🎯 本命の話ができた人数：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b></div>
+    </div>`;
+  const wk=Object.keys(weeks).sort();
+  if(wk.length){
+    html+=`<div class="sec-h" style="margin-top:18px;">🧺 新フォロワーの箱（金曜）<span class="ln"></span></div><div class="card">`;
+    wk.forEach(d=>{ const w=weeks[d]; const tot=(w.a||0)+(w.b||0)+(w.c||0)+(w.d||0); const den=tot||1;
+      const seg=(v,c)=>`<i style="width:${Math.round((v||0)/den*100)}%;background:${c}"></i>`;
+      html+=`<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${d}（計${tot}人）</div>
+        <div class="stack">${seg(w.a,'#6E9A4E')}${seg(w.b,'#D68A5A')}${seg(w.c,'#5A5241')}${seg(w.d,'#C6D3AE')}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px;">A在宅${w.a||0}・B暮らし${w.b||0}・Cクリエイター${w.c||0}・Dその他${w.d||0}${w.memo?'　🗒️'+escapeHtml(w.memo):''}</div></div>`;
+    });
+    html+=`</div>`;
+  }
+  agg.innerHTML=html;
+}
+
+function drawLogList(list){
+  const logs=loadLog(); const ds=Object.keys(logs).sort().reverse();
+  let html=`<div class="sec-h">🗒️ 記録一覧（${ds.length}日）<span class="ln"></span></div>`;
+  if(!ds.length){ html+=`<div class="card"><div style="font-size:12px;color:var(--muted);">まだ記録がありません。上のフォームから今夜の分をどうぞ🌙</div></div>`; list.innerHTML=html; return; }
+  html+=`<div class="card">`+ds.map(d=>{ const r=logs[d];
+    return `<div class="logrow" data-d="${d}"><div class="lr-main"><b>${d}</b> <span class="tag">${r.type||'-'}</span></div>
+      <div class="lr-sub">👀${r.views??'—'} ❤️${r.likes??'—'} 💬返${r.replyLikes??'—'}・PV${r.pv??'—'} 売上${r.sales??'—'}円 本命${r.honmei??'—'}人${r.voice?'・🗣️'+escapeHtml(r.voice):''}</div>
+      <button class="lr-del" data-d="${d}">✕</button></div>`;
+  }).join('')+`</div><div style="font-size:10.5px;color:var(--muted);margin-top:8px;">タップで編集／✕で削除</div>`;
+  list.innerHTML=html;
+  list.querySelectorAll('.logrow').forEach(row=>{ row.onclick=(e)=>{ if(e.target.classList.contains('lr-del'))return; LOG_DATE=row.dataset.d; render(); window.scrollTo({top:0,behavior:'smooth'}); }; });
+  list.querySelectorAll('.lr-del').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); const logs=loadLog(); delete logs[b.dataset.d]; saveLog(logs); render(); }; });
 }
 
 // ===== くわしい戦略レポート（コピペ方式・月額内でClaudeに分析してもらう） =====
