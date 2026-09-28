@@ -113,6 +113,16 @@
   .logrow .lr-main{font-size:13px;color:var(--brown);}
   .logrow .lr-sub{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.55;}
   .logrow .lr-del{position:absolute;right:0;top:9px;background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:4px;}
+  .logform select{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);}
+  .pp-add{background:var(--sage-deep);color:#fff;border:none;border-radius:10px;padding:0 16px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .pp-add:active{transform:scale(.96);}
+  .ppgroup{margin-bottom:13px;}
+  .ppgroup:last-child{margin-bottom:0;}
+  .ppg-h{font-size:12px;font-weight:700;color:var(--brown);margin-bottom:5px;}
+  .pprow{position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--text);}
+  .pprow:last-child{border-bottom:none;}
+  .pprow .pp-m{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5;}
+  .pprow .pp-del{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;flex-shrink:0;padding:2px 4px;}
   .repintro{font-size:12.5px;color:var(--text);line-height:1.85;margin-bottom:14px;}
   .repintro b{color:var(--sage-deep);}
   .repsteps{background:var(--sage-soft);border-radius:14px;padding:13px 16px;font-size:12px;color:var(--sage-deep);line-height:2;margin-bottom:16px;}
@@ -269,6 +279,10 @@ function saveWeek(o){ try{ localStorage.setItem(WEEKKEY, JSON.stringify(o)); }ca
 function typeByDate(ds){ const d=new Date(ds); return (d.getDate()%2===1)?'A':'B'; } // 奇数=A(画像あり) / 偶数=B(画像なし)
 function dateOf(ts){ const d=new Date(ts); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function numOrNull(v){ const n=parseInt(v,10); return isNaN(n)?null:n; }
+// 届けられる人リスト（新フォロワーを1人ずつ）
+const PEOPLEKEY='nyanseki_people_v1';
+function loadPeople(){ try{ return JSON.parse(localStorage.getItem(PEOPLEKEY))||[]; }catch(e){ return []; } }
+function savePeople(a){ try{ localStorage.setItem(PEOPLEKEY, JSON.stringify(a)); }catch(e){} }
 
 async function load(){
   try{
@@ -631,7 +645,7 @@ function renderLog(app){
   app.appendChild($(`<div class="detail-title">✏️ 記録</div>`));
   app.appendChild($(`<div class="detail-sub">寝る前に1〜2分。A/B比較と本命の記録用（10月〜）</div>`));
   const f1=$(`<div class="sec"></div>`); app.appendChild(f1); drawLogForm(f1);
-  const f2=$(`<div class="sec"></div>`); app.appendChild(f2); drawWeekForm(f2);
+  const f2=$(`<div class="sec"></div>`); app.appendChild(f2); drawPeople(f2);
   const f3=$(`<div class="sec"></div>`); app.appendChild(f3); drawLogAgg(f3);
   const f4=$(`<div class="sec"></div>`); app.appendChild(f4); drawFollowers(f4);
   const f5=$(`<div class="sec"></div>`); app.appendChild(f5); drawLogList(f5);
@@ -687,31 +701,47 @@ function drawLogForm(wrap){
   };
 }
 
-function drawWeekForm(wrap){
-  const weeks=loadWeek(); const d=WEEK_DATE; const w=weeks[d]||{};
-  wrap.innerHTML=`
-    <div class="sec-h">🧺 週1（金）新フォロワーの箱<span class="ln"></span></div>
+const BOXES={A:'在宅・おうちビジネス',B:'暮らし・子育て',C:'AIアート・クリエイター',D:'その他'};
+const BOXCOLOR={A:'#6E9A4E',B:'#D68A5A',C:'#5A5241',D:'#9AA889'};
+function drawPeople(wrap){
+  const ppl=loadPeople();
+  let html=`<div class="sec-h">🧺 届けられる人リスト（新フォロワー）<span class="ln"></span><span class="mini">${ppl.length}人</span></div>
     <div class="card logform">
-      <label>日付</label><input type="date" class="wk-date" value="${d}">
-      <div class="lg-grid" style="margin-top:6px;">
-        <div><label>A 在宅・おうちビジネス</label><input type="number" class="wk-a" inputmode="numeric" value="${w.a??''}"></div>
-        <div><label>B 暮らし・子育て</label><input type="number" class="wk-b" inputmode="numeric" value="${w.b??''}"></div>
-        <div><label>C AIアート・クリエイター</label><input type="number" class="wk-c" inputmode="numeric" value="${w.c??''}"></div>
-        <div><label>D その他</label><input type="number" class="wk-d" inputmode="numeric" value="${w.d??''}"></div>
+      <label>新しく気になった人を1人ずつ（金曜のチェックで）</label>
+      <input type="text" class="pp-name" placeholder="名前 / @ハンドル（任意）">
+      <div class="lg-grid" style="grid-template-columns:1fr auto;margin-top:8px;align-items:stretch;">
+        <select class="pp-box">
+          <option value="A">A 在宅・おうちビジネス</option>
+          <option value="B">B 暮らし・子育て</option>
+          <option value="C">C AIアート・クリエイター</option>
+          <option value="D">D その他</option>
+        </select>
+        <button class="pp-add">＋追加</button>
       </div>
-      <label>印象に残った人のメモ</label><textarea class="wk-memo">${w.memo?escapeHtml(w.memo):''}</textarea>
-      <button class="wk-save">${weeks[d]?'更新する':'保存する'}</button>
-    </div>`;
-  wrap.querySelector('.wk-date').onchange=(e)=>{ WEEK_DATE=e.target.value; drawWeekForm(wrap); };
-  wrap.querySelector('.wk-save').onclick=()=>{
-    const weeks=loadWeek();
-    weeks[WEEK_DATE]={ a:numOrNull(wrap.querySelector('.wk-a').value)||0, b:numOrNull(wrap.querySelector('.wk-b').value)||0, c:numOrNull(wrap.querySelector('.wk-c').value)||0, d:numOrNull(wrap.querySelector('.wk-d').value)||0, memo:wrap.querySelector('.wk-memo').value.trim() };
-    saveWeek(weeks); render(); window.scrollTo({top:0,behavior:'smooth'});
+      <input type="text" class="pp-note" placeholder="ひとことメモ（例：小1の壁で悩み中／Canva勉強中）" style="margin-top:8px;">
+    </div>
+    <div class="card" style="margin-top:12px;">`;
+  let any=false;
+  ['A','B','C','D'].forEach(g=>{ const list=ppl.filter(p=>p.box===g); if(!list.length) return; any=true;
+    html+=`<div class="ppgroup"><div class="ppg-h"><span class="dotm" style="background:${BOXCOLOR[g]}"></span>${g} ${BOXES[g]}（${list.length}）</div>`;
+    list.slice().reverse().forEach(p=>{ html+=`<div class="pprow" data-id="${p.id}"><div><b>${p.name?escapeHtml(p.name):'（名前なし）'}</b>${p.note?'<div class="pp-m">'+escapeHtml(p.note)+'</div>':''}</div><button class="pp-del" data-id="${p.id}">✕</button></div>`; });
+    html+=`</div>`;
+  });
+  if(!any) html+=`<div style="font-size:12px;color:var(--muted);">まだ登録がありません。金曜に、新しく気になった人を数人どうぞ😊</div>`;
+  html+=`</div>`;
+  wrap.innerHTML=html;
+  const q=(s)=>wrap.querySelector(s);
+  q('.pp-add').onclick=()=>{
+    const name=q('.pp-name').value.trim(), box=q('.pp-box').value, note=q('.pp-note').value.trim();
+    if(!name && !note){ q('.pp-name').focus(); return; }
+    const ppl=loadPeople(); ppl.push({id:Date.now()+''+Math.floor(Math.random()*1000), date:todayStr(), name, box, note}); savePeople(ppl);
+    render(); window.scrollTo({top:0,behavior:'smooth'});
   };
+  wrap.querySelectorAll('.pp-del').forEach(b=>{ b.onclick=()=>{ const ppl=loadPeople().filter(p=>p.id!==b.dataset.id); savePeople(ppl); render(); }; });
 }
 
 function drawLogAgg(agg){
-  const logs=loadLog(); const weeks=loadWeek();
+  const logs=loadLog();
   const arr=Object.entries(logs).map(([d,r])=>({d,...r}));
   const stat=(type,key)=>{ const xs=arr.filter(r=>r.type===type && r[key]!=null).map(r=>r[key]); return xs.length? Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null; };
   const cntA=arr.filter(r=>r.type==='A').length, cntB=arr.filter(r=>r.type==='B').length;
@@ -727,16 +757,15 @@ function drawLogAgg(agg){
       </table>
       <div class="peak">🎯 本命の話ができた人数：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b></div>
     </div>`;
-  const wk=Object.keys(weeks).sort();
-  if(wk.length){
-    html+=`<div class="sec-h" style="margin-top:18px;">🧺 新フォロワーの箱（金曜）<span class="ln"></span></div><div class="card">`;
-    wk.forEach(d=>{ const w=weeks[d]; const tot=(w.a||0)+(w.b||0)+(w.c||0)+(w.d||0); const den=tot||1;
-      const seg=(v,c)=>`<i style="width:${Math.round((v||0)/den*100)}%;background:${c}"></i>`;
-      html+=`<div style="margin-bottom:12px;"><div style="font-size:11px;color:var(--muted);margin-bottom:4px;">${d}（計${tot}人）</div>
-        <div class="stack">${seg(w.a,'#6E9A4E')}${seg(w.b,'#D68A5A')}${seg(w.c,'#5A5241')}${seg(w.d,'#C6D3AE')}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;">A在宅${w.a||0}・B暮らし${w.b||0}・Cクリエイター${w.c||0}・Dその他${w.d||0}${w.memo?'　🗒️'+escapeHtml(w.memo):''}</div></div>`;
-    });
-    html+=`</div>`;
+  const ppl=loadPeople();
+  if(ppl.length){
+    const cnt={A:0,B:0,C:0,D:0}; ppl.forEach(p=>{ if(cnt[p.box]!=null) cnt[p.box]++; });
+    const den=ppl.length||1;
+    const seg=(v,c)=>`<i style="width:${Math.round(v/den*100)}%;background:${c}"></i>`;
+    html+=`<div class="sec-h" style="margin-top:18px;">🧺 届けられる人の割合（計${ppl.length}人）<span class="ln"></span></div><div class="card">
+      <div class="stack">${seg(cnt.A,BOXCOLOR.A)}${seg(cnt.B,BOXCOLOR.B)}${seg(cnt.C,BOXCOLOR.C)}${seg(cnt.D,BOXCOLOR.D)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.7;">A在宅${cnt.A}・B暮らし${cnt.B}・Cクリエイター${cnt.C}・Dその他${cnt.D}</div>
+    </div>`;
   }
   agg.innerHTML=html;
 }
