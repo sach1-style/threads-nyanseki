@@ -293,6 +293,12 @@ function numOrNull(v){ const n=parseInt(v,10); return isNaN(n)?null:n; }
 const PEOPLEKEY='nyanseki_people_v1';
 function loadPeople(){ try{ return JSON.parse(localStorage.getItem(PEOPLEKEY))||[]; }catch(e){ return []; } }
 function savePeople(a){ try{ localStorage.setItem(PEOPLEKEY, JSON.stringify(a)); }catch(e){} }
+// 実験ログ（Threads投稿・1日に何件でも）
+const EXPKEY='nyanseki_exp_v1';
+let EXP_DATE = todayStr();
+function loadExp(){ try{ return JSON.parse(localStorage.getItem(EXPKEY))||[]; }catch(e){ return []; } }
+function saveExp(a){ try{ localStorage.setItem(EXPKEY, JSON.stringify(a)); }catch(e){} }
+function slotOfHour(h){ return h<10?'朝': h<15?'昼': h<18?'夕方':'夜'; }
 
 async function load(){
   try{
@@ -653,62 +659,93 @@ function drawFollowers(wrap){
 // ===== ✏️ 記録ページ（毎晩の記録・週1の箱・集計） =====
 function renderLog(app){
   app.appendChild($(`<div class="detail-title">✏️ 記録</div>`));
-  app.appendChild($(`<div class="detail-sub">寝る前に1〜2分。A/B比較と本命の記録用（10月〜）</div>`));
-  const f1=$(`<div class="sec"></div>`); app.appendChild(f1); drawLogForm(f1);
-  const f2=$(`<div class="sec"></div>`); app.appendChild(f2); drawPeople(f2);
+  app.appendChild($(`<div class="detail-sub">上＝1日1件のまとめ（note/売上/本命）、下＝Threadsの実験は何件でも（10月〜）</div>`));
+  const f1=$(`<div class="sec"></div>`); app.appendChild(f1); drawDailyForm(f1);
+  const f2=$(`<div class="sec"></div>`); app.appendChild(f2); drawExp(f2);
   const f3=$(`<div class="sec"></div>`); app.appendChild(f3); drawLogAgg(f3);
   const f4=$(`<div class="sec"></div>`); app.appendChild(f4); drawFollowers(f4);
-  const f5=$(`<div class="sec"></div>`); app.appendChild(f5); drawLogList(f5);
+  const f5=$(`<div class="sec"></div>`); app.appendChild(f5); drawPeople(f5);
 }
 
-function drawLogForm(wrap){
-  const logs=loadLog(); const d=LOG_DATE; const rec=logs[d]||{}; const typ=rec.type||typeByDate(d);
+function drawDailyForm(wrap){
+  const logs=loadLog(); const d=LOG_DATE; const rec=logs[d]||{};
   wrap.innerHTML=`
-    <div class="sec-h">🌙 今夜の記録<span class="ln"></span></div>
+    <div class="sec-h">📒 今日のまとめ（1日1件）<span class="ln"></span></div>
     <div class="card logform">
       <label>日付</label><input type="date" class="lg-date" value="${d}">
-      <label>ツリーの種類（奇数日A・偶数日B）</label>
-      <div class="abtoggle">
-        <button class="ab ${typ==='A'?'on':''}" data-ab="A">A 画像あり</button>
-        <button class="ab ${typ==='B'?'on':''}" data-ab="B">B 画像なし</button>
-      </div>
-      <button class="lg-pick">📥 今日の投稿から選ぶ（表示・本文いいねを自動入力）</button>
-      <div class="lg-picklist"></div>
-      <div class="lg-grid" style="margin-top:12px;">
-        <div><label>👀 表示</label><input type="number" class="lg-views" inputmode="numeric" value="${rec.views??''}"></div>
-        <div><label>❤️ 本文のいいね</label><input type="number" class="lg-likes" inputmode="numeric" value="${rec.likes??''}"></div>
-        <div><label>💬 返信のいいね</label><input type="number" class="lg-rlikes" inputmode="numeric" value="${rec.replyLikes??''}"></div>
+      <div class="lg-grid" style="margin-top:6px;">
         <div><label>👥 フォロワー数</label><input type="number" class="lg-fol" inputmode="numeric" value="${rec.followers??(DATA&&DATA.followers!=null?DATA.followers:'')}"></div>
         <div><label>📈 noteページビュー</label><input type="number" class="lg-pv" inputmode="numeric" value="${rec.pv??''}"></div>
         <div><label>💰 note売上(円)</label><input type="number" class="lg-sales" inputmode="numeric" value="${rec.sales??''}"></div>
         <div><label>🎯 本命の話ができた人数</label><input type="number" class="lg-honmei" inputmode="numeric" value="${rec.honmei??''}"></div>
       </div>
-      <label>🗣️ 気になった声（一言）</label><textarea class="lg-voice" placeholder="コメントの中身など">${rec.voice?escapeHtml(rec.voice):''}</textarea>
-      <button class="lg-save">${logs[d]?'この日の記録を更新する':'保存する'}</button>
+      <label>🗣️ 気になった声（一言）</label><textarea class="lg-voice" placeholder="コメントの中身・印象など">${rec.voice?escapeHtml(rec.voice):''}</textarea>
+      <button class="lg-save">${logs[d]?'この日のまとめを更新':'保存する'}</button>
     </div>`;
   const q=(s)=>wrap.querySelector(s);
-  q('.lg-date').onchange=(e)=>{ LOG_DATE=e.target.value; drawLogForm(wrap); };
-  wrap.querySelectorAll('.ab').forEach(b=> b.onclick=()=>{ wrap.querySelectorAll('.ab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
-  q('.lg-pick').onclick=()=>{
-    const pl=q('.lg-picklist');
-    if(pl.innerHTML){ pl.innerHTML=''; return; }
-    const day=(DATA&&DATA.posts?DATA.posts:[]).filter(p=>dateOf(p.ts)===LOG_DATE).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-    if(!day.length){ pl.innerHTML=`<div class="picknone">この日の投稿が見つかりません。手入力してね🖐️（アプリを開いた日以降のみ拾えます）</div>`; return; }
-    pl.innerHTML=day.map((p,i)=>{ const t=new Date(p.ts); const hm=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; const s=escapeHtml((p.text||'(本文なし)').replace(/\n/g,' ').slice(0,30)); return `<div class="pickrow" data-i="${i}"><span>${hm} ${s}</span><span class="pk-m">👀${nf(p.views)} ❤️${nf(p.likes)}</span></div>`; }).join('');
-    pl.querySelectorAll('.pickrow').forEach(r=>{ r.onclick=()=>{ const p=day[+r.dataset.i]; q('.lg-views').value=p.views??''; q('.lg-likes').value=p.likes??''; pl.innerHTML=''; }; });
-  };
+  q('.lg-date').onchange=(e)=>{ LOG_DATE=e.target.value; drawDailyForm(wrap); };
   q('.lg-save').onclick=()=>{
     const logs=loadLog();
-    logs[LOG_DATE]={
-      type: wrap.querySelector('.ab.on')?.dataset.ab || typeByDate(LOG_DATE),
-      views:numOrNull(q('.lg-views').value), likes:numOrNull(q('.lg-likes').value), replyLikes:numOrNull(q('.lg-rlikes').value),
-      followers:numOrNull(q('.lg-fol').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value),
-      honmei:numOrNull(q('.lg-honmei').value), voice:q('.lg-voice').value.trim()
-    };
+    logs[LOG_DATE]={ followers:numOrNull(q('.lg-fol').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value), honmei:numOrNull(q('.lg-honmei').value), voice:q('.lg-voice').value.trim() };
     saveLog(logs);
     const fol=numOrNull(q('.lg-fol').value); if(fol!=null){ const ff=loadFollowers(); ff[LOG_DATE]=fol; saveFollowers(ff); }
     render(); window.scrollTo({top:0,behavior:'smooth'});
   };
+}
+
+function drawExp(wrap){
+  const exps=loadExp();
+  let html=`<div class="sec-h">🧪 実験ログ（Threads投稿・何件でも）<span class="ln"></span><span class="mini">${exps.length}件</span></div>
+    <div class="card logform">
+      <button class="ex-pick">📥 今日の投稿から選ぶ（表示・いいね・時間帯・画像を自動入力）</button>
+      <div class="ex-picklist"></div>
+      <div class="lg-grid" style="grid-template-columns:1fr 1fr;margin-top:10px;">
+        <div><label>日付</label><input type="date" class="ex-date" value="${EXP_DATE}"></div>
+        <div><label>時間帯</label><select class="ex-slot">
+          <option value="朝">朝</option><option value="昼">昼</option><option value="夕方" selected>夕方</option><option value="夜">夜</option>
+        </select></div>
+      </div>
+      <label>画像</label>
+      <div class="abtoggle"><button class="ab on" data-img="あり">🖼️ 画像あり</button><button class="ab" data-img="なし">📝 画像なし</button></div>
+      <label>試したこと（ラベル）</label><input type="text" class="ex-label" placeholder="例：再販の話 / 問い×画像 / 夜に短文">
+      <div class="lg-grid" style="margin-top:8px;">
+        <div><label>👀 表示</label><input type="number" class="ex-views" inputmode="numeric"></div>
+        <div><label>❤️ 本文いいね</label><input type="number" class="ex-likes" inputmode="numeric"></div>
+        <div><label>💬 返信いいね</label><input type="number" class="ex-rlikes" inputmode="numeric"></div>
+      </div>
+      <button class="lg-save ex-add">＋この実験を追加</button>
+    </div>
+    <div class="card" style="margin-top:12px;">`;
+  if(!exps.length){ html+=`<div style="font-size:12px;color:var(--muted);">まだ実験ログがありません。上から1件追加してみて🧪</div>`; }
+  else{
+    const byDate={}; exps.forEach(e=>{ (byDate[e.date]=byDate[e.date]||[]).push(e); });
+    Object.keys(byDate).sort().reverse().forEach(d=>{
+      html+=`<div class="ppg-h" style="margin-top:6px;">${d}</div>`;
+      byDate[d].slice().reverse().forEach(e=>{
+        html+=`<div class="logrow" data-id="${e.id}"><div class="lr-main"><span class="tag">${e.image==='あり'?'🖼️画像':'📝文字'}</span> ${e.slot||''}${e.label?' ・ '+escapeHtml(e.label):''}</div>
+          <div class="lr-sub">👀${e.views??'—'} ❤️${e.likes??'—'} 💬返${e.replyLikes??'—'}</div>
+          <button class="lr-del" data-id="${e.id}">✕</button></div>`;
+      });
+    });
+  }
+  html+=`</div>`;
+  wrap.innerHTML=html;
+  const q=(s)=>wrap.querySelector(s);
+  q('.ex-date').onchange=(e)=>{ EXP_DATE=e.target.value; };
+  wrap.querySelectorAll('.abtoggle .ab').forEach(b=> b.onclick=()=>{ wrap.querySelectorAll('.abtoggle .ab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  q('.ex-pick').onclick=()=>{
+    const pl=q('.ex-picklist'); if(pl.innerHTML){ pl.innerHTML=''; return; }
+    const day=(DATA&&DATA.posts?DATA.posts:[]).filter(p=>dateOf(p.ts)===EXP_DATE).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    if(!day.length){ pl.innerHTML=`<div class="picknone">この日の投稿が見つかりません。手入力してね🖐️</div>`; return; }
+    pl.innerHTML=day.map((p,i)=>{ const t=new Date(p.ts); const hm=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; const s=escapeHtml((p.text||'(本文なし)').replace(/\n/g,' ').slice(0,26)); return `<div class="pickrow" data-i="${i}"><span>${hm} ${s}</span><span class="pk-m">👀${nf(p.views)} ❤️${nf(p.likes)}</span></div>`; }).join('');
+    pl.querySelectorAll('.pickrow').forEach(r=>{ r.onclick=()=>{ const p=day[+r.dataset.i]; const h=new Date(p.ts).getHours(); q('.ex-views').value=p.views??''; q('.ex-likes').value=p.likes??''; q('.ex-slot').value=slotOfHour(h); const img=hasMedia(p)?'あり':'なし'; wrap.querySelectorAll('.abtoggle .ab').forEach(x=>x.classList.toggle('on',x.dataset.img===img)); pl.innerHTML=''; }; });
+  };
+  q('.ex-add').onclick=()=>{
+    const exps=loadExp();
+    exps.push({ id:Date.now()+''+Math.floor(Math.random()*1000), date:EXP_DATE, slot:q('.ex-slot').value, image:wrap.querySelector('.abtoggle .ab.on')?.dataset.img||'あり', label:q('.ex-label').value.trim(), views:numOrNull(q('.ex-views').value), likes:numOrNull(q('.ex-likes').value), replyLikes:numOrNull(q('.ex-rlikes').value) });
+    saveExp(exps); render(); window.scrollTo({top:0,behavior:'smooth'});
+  };
+  wrap.querySelectorAll('.lr-del').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); const exps=loadExp().filter(x=>x.id!==b.dataset.id); saveExp(exps); render(); }; });
 }
 
 const BOXES={A:'在宅・おうちビジネス',B:'暮らし・子育て',C:'AIアート・クリエイター',D:'その他'};
@@ -751,22 +788,33 @@ function drawPeople(wrap){
 }
 
 function drawLogAgg(agg){
-  const logs=loadLog();
-  const arr=Object.entries(logs).map(([d,r])=>({d,...r}));
-  const stat=(type,key)=>{ const xs=arr.filter(r=>r.type===type && r[key]!=null).map(r=>r[key]); return xs.length? Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null; };
-  const cntA=arr.filter(r=>r.type==='A').length, cntB=arr.filter(r=>r.type==='B').length;
-  const honmei=arr.reduce((a,r)=>a+(r.honmei||0),0);
-  const sales=arr.reduce((a,r)=>a+(r.sales||0),0);
+  const exps=loadExp();
+  const daily=Object.values(loadLog());
+  const honmei=daily.reduce((a,r)=>a+(r.honmei||0),0);
+  const sales=daily.reduce((a,r)=>a+(r.sales||0),0);
   const cell=(v)=> v==null?'—':nf(v);
-  const rowAB=(label,k)=>`<tr><td>${label}</td><td>${cell(stat('A',k))}</td><td>${cell(stat('B',k))}</td></tr>`;
-  let html=`<div class="sec-h">📊 集計<span class="ln"></span></div>
-    <div class="card">
-      <div class="chart-title">A（画像あり・${cntA}日） vs B（画像なし・${cntB}日）の平均</div>
-      <table class="abtable"><tr><th></th><th>A🖼️</th><th>B📝</th></tr>
-        ${rowAB('👀 表示','views')}${rowAB('❤️ 本文いいね','likes')}${rowAB('💬 返信いいね','replyLikes')}
-      </table>
-      <div class="peak">🎯 本命の話ができた人数：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b></div>
-    </div>`;
+  const avgBy=(fn,key)=>{ const xs=exps.filter(fn).map(e=>e[key]).filter(v=>v!=null); return xs.length? Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null; };
+  const cntImg=(img)=>exps.filter(e=>e.image===img).length;
+  let html=`<div class="sec-h">📊 集計<span class="ln"></span></div>`;
+  if(exps.length){
+    html+=`<div class="card">
+      <div class="chart-title">画像あり🖼️（${cntImg('あり')}件） vs 画像なし📝（${cntImg('なし')}件）の平均</div>
+      <table class="abtable"><tr><th></th><th>あり</th><th>なし</th></tr>
+        <tr><td>👀 表示</td><td>${cell(avgBy(e=>e.image==='あり','views'))}</td><td>${cell(avgBy(e=>e.image==='なし','views'))}</td></tr>
+        <tr><td>❤️ 本文いいね</td><td>${cell(avgBy(e=>e.image==='あり','likes'))}</td><td>${cell(avgBy(e=>e.image==='なし','likes'))}</td></tr>
+        <tr><td>💬 返信いいね</td><td>${cell(avgBy(e=>e.image==='あり','replyLikes'))}</td><td>${cell(avgBy(e=>e.image==='なし','replyLikes'))}</td></tr>
+      </table></div>`;
+    const slots=['朝','昼','夕方','夜'];
+    if(slots.some(s=>exps.some(e=>e.slot===s))){
+      html+=`<div class="sec-h" style="margin-top:18px;">⏰ 時間帯別の平均<span class="ln"></span></div><div class="card">
+        <table class="abtable"><tr><th></th>${slots.map(s=>`<th>${s}</th>`).join('')}</tr>
+        <tr><td>👀 表示</td>${slots.map(s=>`<td>${cell(avgBy(e=>e.slot===s,'views'))}</td>`).join('')}</tr>
+        <tr><td>❤️ いいね</td>${slots.map(s=>`<td>${cell(avgBy(e=>e.slot===s,'likes'))}</td>`).join('')}</tr>
+        <tr><td>件数</td>${slots.map(s=>`<td>${exps.filter(e=>e.slot===s).length}</td>`).join('')}</tr>
+        </table></div>`;
+    }
+  }
+  html+=`<div class="card" style="margin-top:12px;"><div class="peak">🎯 本命の話：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b></div></div>`;
   const ppl=loadPeople();
   if(ppl.length){
     const cnt={A:0,B:0,C:0,D:0}; ppl.forEach(p=>{ if(cnt[p.box]!=null) cnt[p.box]++; });
