@@ -709,9 +709,10 @@ function drawExp(wrap){
       <div class="abtoggle"><button class="ab on" data-img="あり">🖼️ 画像あり</button><button class="ab" data-img="なし">📝 画像なし</button></div>
       <label>試したこと（ラベル）</label><input type="text" class="ex-label" placeholder="例：再販の話 / 問い×画像 / 夜に短文">
       <div class="lg-grid" style="margin-top:8px;">
-        <div><label>👀 表示</label><input type="number" class="ex-views" inputmode="numeric"></div>
+        <div><label>👀 本文の表示</label><input type="number" class="ex-views" inputmode="numeric"></div>
         <div><label>❤️ 本文いいね</label><input type="number" class="ex-likes" inputmode="numeric"></div>
-        <div><label>💬 返信いいね</label><input type="number" class="ex-rlikes" inputmode="numeric"></div>
+        <div><label>👀 返信の表示</label><input type="number" class="ex-rviews" inputmode="numeric"></div>
+        <div><label>❤️ 返信いいね</label><input type="number" class="ex-rlikes" inputmode="numeric"></div>
       </div>
       <button class="lg-save ex-add">＋この実験を追加</button>
     </div>
@@ -723,7 +724,7 @@ function drawExp(wrap){
       html+=`<div class="ppg-h" style="margin-top:6px;">${d}</div>`;
       byDate[d].slice().reverse().forEach(e=>{
         html+=`<div class="logrow" data-id="${e.id}"><div class="lr-main"><span class="tag">${e.image==='あり'?'🖼️画像':'📝文字'}</span> ${e.slot||''}${e.label?' ・ '+escapeHtml(e.label):''}</div>
-          <div class="lr-sub">👀${e.views??'—'} ❤️${e.likes??'—'} 💬返${e.replyLikes??'—'}</div>
+          <div class="lr-sub">本文👀${e.views??'—'} ❤️${e.likes??'—'} ・ 返信👀${e.replyViews??'—'} ❤️${e.replyLikes??'—'}</div>
           <button class="lr-del" data-id="${e.id}">✕</button></div>`;
       });
     });
@@ -742,7 +743,7 @@ function drawExp(wrap){
   };
   q('.ex-add').onclick=()=>{
     const exps=loadExp();
-    exps.push({ id:Date.now()+''+Math.floor(Math.random()*1000), date:EXP_DATE, slot:q('.ex-slot').value, image:wrap.querySelector('.abtoggle .ab.on')?.dataset.img||'あり', label:q('.ex-label').value.trim(), views:numOrNull(q('.ex-views').value), likes:numOrNull(q('.ex-likes').value), replyLikes:numOrNull(q('.ex-rlikes').value) });
+    exps.push({ id:Date.now()+''+Math.floor(Math.random()*1000), date:EXP_DATE, slot:q('.ex-slot').value, image:wrap.querySelector('.abtoggle .ab.on')?.dataset.img||'あり', label:q('.ex-label').value.trim(), views:numOrNull(q('.ex-views').value), likes:numOrNull(q('.ex-likes').value), replyViews:numOrNull(q('.ex-rviews').value), replyLikes:numOrNull(q('.ex-rlikes').value) });
     saveExp(exps); render(); window.scrollTo({top:0,behavior:'smooth'});
   };
   wrap.querySelectorAll('.lr-del').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); const exps=loadExp().filter(x=>x.id!==b.dataset.id); saveExp(exps); render(); }; });
@@ -800,9 +801,10 @@ function drawLogAgg(agg){
     html+=`<div class="card">
       <div class="chart-title">画像あり🖼️（${cntImg('あり')}件） vs 画像なし📝（${cntImg('なし')}件）の平均</div>
       <table class="abtable"><tr><th></th><th>あり</th><th>なし</th></tr>
-        <tr><td>👀 表示</td><td>${cell(avgBy(e=>e.image==='あり','views'))}</td><td>${cell(avgBy(e=>e.image==='なし','views'))}</td></tr>
+        <tr><td>👀 本文の表示</td><td>${cell(avgBy(e=>e.image==='あり','views'))}</td><td>${cell(avgBy(e=>e.image==='なし','views'))}</td></tr>
         <tr><td>❤️ 本文いいね</td><td>${cell(avgBy(e=>e.image==='あり','likes'))}</td><td>${cell(avgBy(e=>e.image==='なし','likes'))}</td></tr>
-        <tr><td>💬 返信いいね</td><td>${cell(avgBy(e=>e.image==='あり','replyLikes'))}</td><td>${cell(avgBy(e=>e.image==='なし','replyLikes'))}</td></tr>
+        <tr><td>👀 返信の表示</td><td>${cell(avgBy(e=>e.image==='あり','replyViews'))}</td><td>${cell(avgBy(e=>e.image==='なし','replyViews'))}</td></tr>
+        <tr><td>❤️ 返信いいね</td><td>${cell(avgBy(e=>e.image==='あり','replyLikes'))}</td><td>${cell(avgBy(e=>e.image==='なし','replyLikes'))}</td></tr>
       </table></div>`;
     const slots=['朝','昼','夕方','夜'];
     if(slots.some(s=>exps.some(e=>e.slot===s))){
