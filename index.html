@@ -863,7 +863,7 @@ function patternOf(p){
   if(/[?？]/.test(t)) return '問い形式';
   return '説明形式';
 }
-function buildReportPrompt(posts){
+function buildContext(posts){
   const n = posts.length;
   const sum = (k)=> posts.reduce((a,p)=>a+(Number(p[k])||0),0);
   const totalEng = posts.reduce((a,p)=>a+eng(p),0);
@@ -908,6 +908,22 @@ function buildReportPrompt(posts){
 ■ フォロワー数の推移：${folLine}
 ${dlDates.length?`■ note/売上/本命（1日1件）\n${dailyLines}`:''}${ex.length?`■ 実験ログ（Threads投稿・画像有無/ツリー有無/時間帯/試したこと）\n${expLines}`:''}`;
 
+  const dataStr = `━━━━━━━━━━
+【アカウント】@${DATA.username||'-'} ／ フォロワー：${DATA.followers!=null?DATA.followers:'不明'} ／ 集計期間：${periodLabel()} ／ ${n}投稿
+【平均】表示${Math.round(sum('views')/n)} ・ いいね${Math.round(sum('likes')/n)} ・ コメント${Math.round(sum('replies')/n)} ・ エンゲージ率${egRate.toFixed(1)}%
+
+【時間帯別（1時間ごと）】
+${hourLines}
+【投稿パターン別の反応】
+${patLines}
+【投稿一覧（新しい順・全${n}件）】
+${postLines}${recBlock}
+━━━━━━━━━━`;
+  return { profBlock, dataStr };
+}
+
+function buildReportPrompt(posts){
+  const { profBlock, dataStr } = buildContext(posts);
   return `あなたは、Threadsの発信を伸ばすプロの分析コンサルタントです。
 以下の私のThreadsデータをもとに、次のフォーマットで具体的な戦略レポートを書いてください。ふわっとした感想や励ましより、データに基づいた鋭い読み解きと、明日から動ける具体策を優先してください。${profBlock}
 
@@ -919,17 +935,7 @@ ${dlDates.length?`■ note/売上/本命（1日1件）\n${dailyLines}`:''}${ex.l
 ④ 来週の具体プラン（最優先を1つに絞る。理由・内容・期待値も）
 ✅ 次にやる1つ（すぐ動ける具体アクション＋そのまま使える投稿テンプレ3案）
 
-━━━━━━━━━━
-【アカウント】@${DATA.username||'-'} ／ フォロワー：${DATA.followers!=null?DATA.followers:'不明'} ／ 集計期間：${periodLabel()} ／ ${n}投稿
-【平均】表示${Math.round(sum('views')/n)} ・ いいね${Math.round(sum('likes')/n)} ・ コメント${Math.round(sum('replies')/n)} ・ エンゲージ率${egRate.toFixed(1)}%
-
-【時間帯別（1時間ごと）】
-${hourLines}
-【投稿パターン別の反応】
-${patLines}
-【投稿一覧（新しい順・全${n}件）】
-${postLines}${recBlock}
-━━━━━━━━━━
+${dataStr}
 以上のデータだけを根拠に、上記フォーマットで日本語のレポートを書いてください。`;
 }
 
