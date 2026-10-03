@@ -96,6 +96,9 @@
   .abtoggle{display:flex;gap:8px;}
   .abtoggle .ab{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:12.5px;font-weight:700;background:var(--card);color:var(--muted);cursor:pointer;font-family:inherit;}
   .abtoggle .ab.on{background:var(--sage-deep);color:#fff;border-color:var(--sage-deep);}
+  .treetoggle{display:flex;gap:8px;}
+  .treetoggle .tb{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:12.5px;font-weight:700;background:var(--card);color:var(--muted);cursor:pointer;font-family:inherit;}
+  .treetoggle .tb.on{background:var(--brown);color:#fff;border-color:var(--brown);}
   .lg-pick{width:100%;margin-top:13px;background:var(--sage-soft);color:var(--sage-deep);border:1px dashed var(--sage);border-radius:10px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
   .lg-picklist{margin-top:6px;}
   .pickrow{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;margin-top:6px;cursor:pointer;background:var(--card);}
@@ -707,6 +710,8 @@ function drawExp(wrap){
       </div>
       <label>画像</label>
       <div class="abtoggle"><button class="ab on" data-img="あり">🖼️ 画像あり</button><button class="ab" data-img="なし">📝 画像なし</button></div>
+      <label>投稿の形</label>
+      <div class="treetoggle"><button class="tb on" data-tree="単発">単発</button><button class="tb" data-tree="ツリー">🧵 ツリー(連投)</button></div>
       <label>試したこと（ラベル）</label><input type="text" class="ex-label" placeholder="例：再販の話 / 問い×画像 / 夜に短文">
       <div class="lg-grid" style="margin-top:8px;">
         <div><label>👀 本文の表示</label><input type="number" class="ex-views" inputmode="numeric"></div>
@@ -723,7 +728,7 @@ function drawExp(wrap){
     Object.keys(byDate).sort().reverse().forEach(d=>{
       html+=`<div class="ppg-h" style="margin-top:6px;">${d}</div>`;
       byDate[d].slice().reverse().forEach(e=>{
-        html+=`<div class="logrow" data-id="${e.id}"><div class="lr-main"><span class="tag">${e.image==='あり'?'🖼️画像':'📝文字'}</span> ${e.slot||''}${e.label?' ・ '+escapeHtml(e.label):''}</div>
+        html+=`<div class="logrow" data-id="${e.id}"><div class="lr-main"><span class="tag">${e.image==='あり'?'🖼️画像':'📝文字'}</span>${e.tree==='ツリー'?' <span class="tag">🧵ツリー</span>':''} ${e.slot||''}${e.label?' ・ '+escapeHtml(e.label):''}</div>
           <div class="lr-sub">本文👀${e.views??'—'} ❤️${e.likes??'—'} ・ 返信👀${e.replyViews??'—'} ❤️${e.replyLikes??'—'}</div>
           <button class="lr-del" data-id="${e.id}">✕</button></div>`;
       });
@@ -734,6 +739,7 @@ function drawExp(wrap){
   const q=(s)=>wrap.querySelector(s);
   q('.ex-date').onchange=(e)=>{ EXP_DATE=e.target.value; };
   wrap.querySelectorAll('.abtoggle .ab').forEach(b=> b.onclick=()=>{ wrap.querySelectorAll('.abtoggle .ab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  wrap.querySelectorAll('.treetoggle .tb').forEach(b=> b.onclick=()=>{ wrap.querySelectorAll('.treetoggle .tb').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
   q('.ex-pick').onclick=()=>{
     const pl=q('.ex-picklist'); if(pl.innerHTML){ pl.innerHTML=''; return; }
     const day=(DATA&&DATA.posts?DATA.posts:[]).filter(p=>dateOf(p.ts)===EXP_DATE).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
@@ -743,7 +749,7 @@ function drawExp(wrap){
   };
   q('.ex-add').onclick=()=>{
     const exps=loadExp();
-    exps.push({ id:Date.now()+''+Math.floor(Math.random()*1000), date:EXP_DATE, slot:q('.ex-slot').value, image:wrap.querySelector('.abtoggle .ab.on')?.dataset.img||'あり', label:q('.ex-label').value.trim(), views:numOrNull(q('.ex-views').value), likes:numOrNull(q('.ex-likes').value), replyViews:numOrNull(q('.ex-rviews').value), replyLikes:numOrNull(q('.ex-rlikes').value) });
+    exps.push({ id:Date.now()+''+Math.floor(Math.random()*1000), date:EXP_DATE, slot:q('.ex-slot').value, image:wrap.querySelector('.abtoggle .ab.on')?.dataset.img||'あり', tree:wrap.querySelector('.treetoggle .tb.on')?.dataset.tree||'単発', label:q('.ex-label').value.trim(), views:numOrNull(q('.ex-views').value), likes:numOrNull(q('.ex-likes').value), replyViews:numOrNull(q('.ex-rviews').value), replyLikes:numOrNull(q('.ex-rlikes').value) });
     saveExp(exps); render(); window.scrollTo({top:0,behavior:'smooth'});
   };
   wrap.querySelectorAll('.lr-del').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); const exps=loadExp().filter(x=>x.id!==b.dataset.id); saveExp(exps); render(); }; });
@@ -888,6 +894,20 @@ function buildReportPrompt(posts){
   if(PROFILE.focus)  prof.push('・特に知りたいこと：'+PROFILE.focus.replace(/\n/g,' '));
   const profBlock = prof.length ? `\n\n【この発信者について（必ず分析の前提にしてください）】\n${prof.join('\n')}` : '';
 
+  // あなたの手入力の記録（note/売上/本命/フォロワー推移/実験ログ）
+  const fol=loadFollowers(); const folDates=Object.keys(fol).sort();
+  const folLine = folDates.length ? folDates.map(d=>`${d}:${fol[d]}`).join(' / ') : 'なし';
+  const dl=loadLog(); const dlDates=Object.keys(dl).sort();
+  let dailyLines=''; dlDates.forEach(d=>{ const r=dl[d]; dailyLines+=`- ${d}｜notePV ${r.pv??'-'}／売上 ${r.sales??'-'}円／本命の話 ${r.honmei??'-'}人${r.voice?'／声:'+r.voice.replace(/\n/g,' '):''}\n`; });
+  const ex=loadExp();
+  let expLines=''; ex.slice().sort((a,b)=> a.date<b.date?1:-1).forEach(e=>{ expLines+=`- ${e.date} ${e.slot||''}｜${e.image==='あり'?'画像あり':'画像なし'}／${e.tree==='ツリー'?'ツリー':'単発'}${e.label?'／'+e.label:''}｜本文(表示${e.views??'-'}/いいね${e.likes??'-'})・返信(表示${e.replyViews??'-'}/いいね${e.replyLikes??'-'})\n`; });
+  const recBlock = `
+
+【あなたの手入力の記録（アプリ内・最優先で活用してください）】
+※コメント数には必ず私（発信者）の返信が含まれます（毎投稿で返信するため）。この前提で読んでください。
+■ フォロワー数の推移：${folLine}
+${dlDates.length?`■ note/売上/本命（1日1件）\n${dailyLines}`:''}${ex.length?`■ 実験ログ（Threads投稿・画像有無/ツリー有無/時間帯/試したこと）\n${expLines}`:''}`;
+
   return `あなたは、Threadsの発信を伸ばすプロの分析コンサルタントです。
 以下の私のThreadsデータをもとに、次のフォーマットで具体的な戦略レポートを書いてください。ふわっとした感想や励ましより、データに基づいた鋭い読み解きと、明日から動ける具体策を優先してください。${profBlock}
 
@@ -908,7 +928,8 @@ ${hourLines}
 【投稿パターン別の反応】
 ${patLines}
 【投稿一覧（新しい順・全${n}件）】
-${postLines}━━━━━━━━━━
+${postLines}${recBlock}
+━━━━━━━━━━
 以上のデータだけを根拠に、上記フォーマットで日本語のレポートを書いてください。`;
 }
 
