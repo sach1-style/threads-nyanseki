@@ -99,6 +99,14 @@
   .treetoggle{display:flex;gap:8px;}
   .treetoggle .tb{flex:1;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:12.5px;font-weight:700;background:var(--card);color:var(--muted);cursor:pointer;font-family:inherit;}
   .treetoggle .tb.on{background:var(--brown);color:#fff;border-color:var(--brown);}
+  .rep-btn{margin-top:8px;background:var(--sage-soft);color:var(--sage-deep);border:1px solid var(--sage);border-radius:9px;padding:7px 12px;font-size:11.5px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .rep-btn:disabled{opacity:.6;cursor:default;}
+  .rep-panel{margin-top:7px;}
+  .rep-panel .rep-head{font-size:11.5px;color:var(--brown);font-weight:700;background:var(--sage-soft);border-radius:8px;padding:8px 10px;margin-bottom:5px;line-height:1.6;}
+  .rep-panel .rep-head b{color:var(--sage-deep);}
+  .rep-panel .rep-c{font-size:11px;color:var(--text);padding:6px 2px;border-bottom:1px solid var(--line);line-height:1.5;}
+  .rep-panel .rep-c b{color:var(--sage-deep);}
+  .rep-panel .rep-err{font-size:11px;color:#9a5a35;background:#FBEBE2;border:1px solid #E9C3AC;border-radius:8px;padding:8px;}
   .lg-pick{width:100%;margin-top:13px;background:var(--sage-soft);color:var(--sage-deep);border:1px dashed var(--sage);border-radius:10px;padding:11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
   .lg-picklist{margin-top:6px;}
   .pickrow{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;margin-top:6px;cursor:pointer;background:var(--card);}
@@ -719,6 +727,7 @@ function drawExp(wrap){
         <div><label>👀 返信の表示</label><input type="number" class="ex-rviews" inputmode="numeric"></div>
         <div><label>❤️ 返信いいね</label><input type="number" class="ex-rlikes" inputmode="numeric"></div>
       </div>
+      <input type="hidden" class="ex-mid">
       <button class="lg-save ex-add">＋この実験を追加</button>
     </div>
     <div class="card" style="margin-top:12px;">`;
@@ -729,7 +738,9 @@ function drawExp(wrap){
       html+=`<div class="ppg-h" style="margin-top:6px;">${d}</div>`;
       byDate[d].slice().reverse().forEach(e=>{
         html+=`<div class="logrow" data-id="${e.id}"><div class="lr-main"><span class="tag">${e.image==='あり'?'🖼️画像':'📝文字'}</span>${e.tree==='ツリー'?' <span class="tag">🧵ツリー</span>':''} ${e.slot||''}${e.label?' ・ '+escapeHtml(e.label):''}</div>
-          <div class="lr-sub">本文👀${e.views??'—'} ❤️${e.likes??'—'} ・ 返信👀${e.replyViews??'—'} ❤️${e.replyLikes??'—'}</div>
+          <div class="lr-sub">本文👀${e.views??'—'} ❤️${e.likes??'—'} ・ 返信👀${e.replyViews??'—'} ❤️${e.replyLikes??'—'}${e.otherCount!=null?` ・ 💬他${e.otherCount}/自${e.selfCount}`:''}</div>
+          ${e.mediaId?`<button class="rep-btn" data-id="${e.id}" data-mid="${e.mediaId}">💬 返信を取得</button>`:''}
+          <div class="rep-panel" data-id="${e.id}"></div>
           <button class="lr-del" data-id="${e.id}">✕</button></div>`;
       });
     });
@@ -745,14 +756,30 @@ function drawExp(wrap){
     const day=(DATA&&DATA.posts?DATA.posts:[]).filter(p=>dateOf(p.ts)===EXP_DATE).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
     if(!day.length){ pl.innerHTML=`<div class="picknone">この日の投稿が見つかりません。手入力してね🖐️</div>`; return; }
     pl.innerHTML=day.map((p,i)=>{ const t=new Date(p.ts); const hm=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; const s=escapeHtml((p.text||'(本文なし)').replace(/\n/g,' ').slice(0,26)); return `<div class="pickrow" data-i="${i}"><span>${hm} ${s}</span><span class="pk-m">👀${nf(p.views)} ❤️${nf(p.likes)}</span></div>`; }).join('');
-    pl.querySelectorAll('.pickrow').forEach(r=>{ r.onclick=()=>{ const p=day[+r.dataset.i]; const h=new Date(p.ts).getHours(); q('.ex-views').value=p.views??''; q('.ex-likes').value=p.likes??''; q('.ex-slot').value=slotOfHour(h); const img=hasMedia(p)?'あり':'なし'; wrap.querySelectorAll('.abtoggle .ab').forEach(x=>x.classList.toggle('on',x.dataset.img===img)); pl.innerHTML=''; }; });
+    pl.querySelectorAll('.pickrow').forEach(r=>{ r.onclick=()=>{ const p=day[+r.dataset.i]; const h=new Date(p.ts).getHours(); q('.ex-views').value=p.views??''; q('.ex-likes').value=p.likes??''; q('.ex-slot').value=slotOfHour(h); const img=hasMedia(p)?'あり':'なし'; wrap.querySelectorAll('.abtoggle .ab').forEach(x=>x.classList.toggle('on',x.dataset.img===img)); q('.ex-mid').value=p.id||''; pl.innerHTML=''; }; });
   };
   q('.ex-add').onclick=()=>{
     const exps=loadExp();
-    exps.push({ id:Date.now()+''+Math.floor(Math.random()*1000), date:EXP_DATE, slot:q('.ex-slot').value, image:wrap.querySelector('.abtoggle .ab.on')?.dataset.img||'あり', tree:wrap.querySelector('.treetoggle .tb.on')?.dataset.tree||'単発', label:q('.ex-label').value.trim(), views:numOrNull(q('.ex-views').value), likes:numOrNull(q('.ex-likes').value), replyViews:numOrNull(q('.ex-rviews').value), replyLikes:numOrNull(q('.ex-rlikes').value) });
+    exps.push({ id:Date.now()+''+Math.floor(Math.random()*1000), date:EXP_DATE, slot:q('.ex-slot').value, image:wrap.querySelector('.abtoggle .ab.on')?.dataset.img||'あり', tree:wrap.querySelector('.treetoggle .tb.on')?.dataset.tree||'単発', label:q('.ex-label').value.trim(), mediaId:q('.ex-mid').value||null, views:numOrNull(q('.ex-views').value), likes:numOrNull(q('.ex-likes').value), replyViews:numOrNull(q('.ex-rviews').value), replyLikes:numOrNull(q('.ex-rlikes').value) });
     saveExp(exps); render(); window.scrollTo({top:0,behavior:'smooth'});
   };
   wrap.querySelectorAll('.lr-del').forEach(b=>{ b.onclick=(e)=>{ e.stopPropagation(); const exps=loadExp().filter(x=>x.id!==b.dataset.id); saveExp(exps); render(); }; });
+  wrap.querySelectorAll('.rep-btn').forEach(b=>{ b.onclick=async(ev)=>{
+    ev.stopPropagation();
+    const id=b.dataset.id, mid=b.dataset.mid;
+    const panel=wrap.querySelector(`.rep-panel[data-id="${id}"]`);
+    b.textContent='取得中…'; b.disabled=true;
+    try{
+      const r=await fetch('/api/replies?mediaId='+encodeURIComponent(mid));
+      const d=await r.json();
+      if(d.error){ panel.innerHTML=`<div class="rep-err">⚠️ ${escapeHtml(d.error)}</div>`; b.textContent='💬 返信を取得'; b.disabled=false; return; }
+      const exps=loadExp(); const e=exps.find(x=>x.id===id);
+      if(e){ e.otherCount=d.otherCount; e.selfCount=d.selfCount; if(d.selfViews) e.replyViews=d.selfViews; if(d.selfLikes) e.replyLikes=d.selfLikes; saveExp(exps); }
+      const list=(d.others||[]).slice(0,40).map(o=>`<div class="rep-c"><b>@${escapeHtml(o.username||'?')}</b> ${escapeHtml((o.text||'').replace(/\n/g,' ').slice(0,70))}</div>`).join('') || '<div class="rep-c" style="color:var(--muted)">他の人のコメントはまだありません</div>';
+      panel.innerHTML=`<div class="rep-head">💬 他の人のコメント <b>${d.otherCount}</b>件 ／ 自分の返信 <b>${d.selfCount}</b>件（返信の表示 ${nf(d.selfViews)}・いいね ${nf(d.selfLikes)}）<br><span style="font-weight:400;color:var(--muted);font-size:10px;">↑自分の返信の数字は記録に自動反映しました</span></div>${list}`;
+      b.textContent='✅ 取得＆反映しました'; b.disabled=false;
+    }catch(err){ panel.innerHTML=`<div class="rep-err">⚠️ ${escapeHtml(String(err.message||err))}</div>`; b.textContent='💬 返信を取得'; b.disabled=false; }
+  }; });
 }
 
 const BOXES={A:'在宅・おうちビジネス',B:'暮らし・子育て',C:'AIアート・クリエイター',D:'その他'};
