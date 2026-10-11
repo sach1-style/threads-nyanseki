@@ -18,9 +18,9 @@ export default async function handler(req, res){
     const me = await j(`${BASE}/me?fields=username&access_token=${t}`);
     const myName = me.username || null;
 
-    // 返信一覧（最大3ページ）
+    // 会話全体（トップレベル＋入れ子の返信すべて。最大3ページ）
     let replies = [];
-    let url = `${BASE}/${mediaId}/replies?fields=id,username,text,timestamp&limit=100&access_token=${t}`;
+    let url = `${BASE}/${mediaId}/conversation?fields=id,username,text,timestamp&limit=100&access_token=${t}`;
     let pages = 0;
     while(url && pages < 3){
       const d = await j(url);
@@ -29,6 +29,8 @@ export default async function handler(req, res){
       url = d?.paging?.next || null;
       pages++;
     }
+    // 元の投稿そのものが含まれていたら除外
+    replies = replies.filter(r => String(r.id) !== String(mediaId));
 
     const self = replies.filter(r => myName && r.username === myName);
     const others = replies.filter(r => !myName || r.username !== myName);
