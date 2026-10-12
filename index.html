@@ -690,6 +690,8 @@ function drawDailyForm(wrap){
         <div><label>📈 noteページビュー</label><input type="number" class="lg-pv" inputmode="numeric" value="${rec.pv??''}"></div>
         <div><label>💰 note売上(円)</label><input type="number" class="lg-sales" inputmode="numeric" value="${rec.sales??''}"></div>
         <div><label>🎯 本命の話ができた人数</label><input type="number" class="lg-honmei" inputmode="numeric" value="${rec.honmei??''}"></div>
+        <div><label>🔁 ラリー継続（3往復＋）人数</label><input type="number" class="lg-rally" inputmode="numeric" value="${rec.rally??''}"></div>
+        <div><label>📌 ピン/note紹介できた人数</label><input type="number" class="lg-intro" inputmode="numeric" value="${rec.intro??''}"></div>
       </div>
       <label>🗣️ 気になった声（一言）</label><textarea class="lg-voice" placeholder="コメントの中身・印象など">${rec.voice?escapeHtml(rec.voice):''}</textarea>
       <button class="lg-save">${logs[d]?'この日のまとめを更新':'保存する'}</button>
@@ -698,7 +700,7 @@ function drawDailyForm(wrap){
   q('.lg-date').onchange=(e)=>{ LOG_DATE=e.target.value; drawDailyForm(wrap); };
   q('.lg-save').onclick=()=>{
     const logs=loadLog();
-    logs[LOG_DATE]={ followers:numOrNull(q('.lg-fol').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value), honmei:numOrNull(q('.lg-honmei').value), voice:q('.lg-voice').value.trim() };
+    logs[LOG_DATE]={ followers:numOrNull(q('.lg-fol').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value), honmei:numOrNull(q('.lg-honmei').value), rally:numOrNull(q('.lg-rally').value), intro:numOrNull(q('.lg-intro').value), voice:q('.lg-voice').value.trim() };
     saveLog(logs);
     const fol=numOrNull(q('.lg-fol').value); if(fol!=null){ const ff=loadFollowers(); ff[LOG_DATE]=fol; saveFollowers(ff); }
     render(); window.scrollTo({top:0,behavior:'smooth'});
@@ -837,6 +839,8 @@ function drawLogAgg(agg){
   const daily=Object.values(loadLog());
   const honmei=daily.reduce((a,r)=>a+(r.honmei||0),0);
   const sales=daily.reduce((a,r)=>a+(r.sales||0),0);
+  const rally=daily.reduce((a,r)=>a+(r.rally||0),0);
+  const intro=daily.reduce((a,r)=>a+(r.intro||0),0);
   const cell=(v)=> v==null?'—':nf(v);
   const avgBy=(fn,key)=>{ const xs=exps.filter(fn).map(e=>e[key]).filter(v=>v!=null); return xs.length? Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null; };
   const cntImg=(img)=>exps.filter(e=>e.image===img).length;
@@ -860,7 +864,7 @@ function drawLogAgg(agg){
         </table></div>`;
     }
   }
-  html+=`<div class="card" style="margin-top:12px;"><div class="peak">🎯 本命の話：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b></div></div>`;
+  html+=`<div class="card" style="margin-top:12px;"><div class="peak">🎯 本命の話：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b><br>🔁 ラリー3往復＋：合計 <b>${nf(rally)}人</b>　📌 ピン/note紹介：合計 <b>${nf(intro)}人</b></div></div>`;
   const ppl=loadPeople();
   if(ppl.length){
     const cnt={A:0,B:0,C:0,D:0}; ppl.forEach(p=>{ if(cnt[p.box]!=null) cnt[p.box]++; });
@@ -936,7 +940,7 @@ function buildContext(posts){
   const fol=loadFollowers(); const folDates=Object.keys(fol).sort();
   const folLine = folDates.length ? folDates.map(d=>`${d}:${fol[d]}`).join(' / ') : 'なし';
   const dl=loadLog(); const dlDates=Object.keys(dl).sort();
-  let dailyLines=''; dlDates.forEach(d=>{ const r=dl[d]; dailyLines+=`- ${d}｜notePV ${r.pv??'-'}／売上 ${r.sales??'-'}円／本命の話 ${r.honmei??'-'}人${r.voice?'／声:'+r.voice.replace(/\n/g,' '):''}\n`; });
+  let dailyLines=''; dlDates.forEach(d=>{ const r=dl[d]; dailyLines+=`- ${d}｜notePV ${r.pv??'-'}／売上 ${r.sales??'-'}円／本命の話 ${r.honmei??'-'}人／ラリー3往復+ ${r.rally??'-'}人／ピンnote紹介 ${r.intro??'-'}人${r.voice?'／声:'+r.voice.replace(/\n/g,' '):''}\n`; });
   const ex=loadExp();
   let expLines=''; ex.slice().sort((a,b)=> a.date<b.date?1:-1).forEach(e=>{ expLines+=`- ${e.date} ${e.slot||''}｜${e.image==='あり'?'画像あり':'画像なし'}／${e.tree==='ツリー'?'ツリー':'単発'}${e.label?'／'+e.label:''}｜本文(表示${e.views??'-'}/いいね${e.likes??'-'})・返信(表示${e.replyViews??'-'}/いいね${e.replyLikes??'-'})\n`; });
   const recBlock = `
