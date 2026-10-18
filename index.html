@@ -55,6 +55,18 @@
   .pmetrics .mt i{font-size:9px;color:var(--muted);font-style:normal;}
   .pmetrics .hlmt{background:var(--terra-soft);}
   .pmetrics .hlmt b{color:var(--terra-deep);}
+  .handrow{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);flex-wrap:wrap;}
+  .handrow.on{background:var(--sage-soft,#eef3e6);margin:10px -14px -14px;padding:11px 14px;border-top:1px solid var(--line);border-radius:0 0 16px 16px;}
+  .handrow .hr-lb{font-size:11.5px;color:var(--muted);font-weight:700;white-space:nowrap;}
+  .handrow .hr-n{width:74px;border:1px solid var(--line);border-radius:10px;padding:8px 9px;font-size:13px;font-family:inherit;color:var(--text);background:var(--card);}
+  .handrow .hr-tag{flex:1;min-width:120px;border:1px solid var(--line);border-radius:10px;padding:8px 9px;font-size:12px;font-family:inherit;color:var(--text);background:var(--card);}
+  .htags{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 14px;}
+  .htags summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--brown);padding:8px 0;}
+  .htags-body{padding:4px 0 10px;}
+  .htag-row{display:flex;gap:8px;margin-top:8px;}
+  .htag-in,.htag-new{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);}
+  .htag-del,.htag-add{border:1px solid var(--line);background:var(--bg);color:var(--brown);border-radius:10px;padding:0 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
+  .htag-note{font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5;}
 
   .backbar{padding:14px 0 0;}
   .backbtn{background:var(--card);border:1px solid var(--line);color:var(--brown);border-radius:999px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
@@ -311,6 +323,14 @@ let EXP_DATE = todayStr();
 function loadExp(){ try{ return JSON.parse(localStorage.getItem(EXPKEY))||[]; }catch(e){ return []; } }
 function saveExp(a){ try{ localStorage.setItem(EXPKEY, JSON.stringify(a)); }catch(e){} }
 function slotOfHour(h){ return h<10?'朝': h<15?'昼': h<18?'夕方':'夜'; }
+// 手を挙げてくれた人（投稿ごと：{ [postId]:{hands, tag} }）＋ 手挙げタグの選択肢
+const HANDKEY='nyanseki_hands_v1';
+function loadHands(){ try{ return JSON.parse(localStorage.getItem(HANDKEY))||{}; }catch(e){ return {}; } }
+function saveHands(o){ try{ localStorage.setItem(HANDKEY, JSON.stringify(o)); }catch(e){} }
+const HANDTAGKEY='nyanseki_handtags_v1';
+const DEFAULT_HANDTAGS=['好きを形に','始めたい・まだこれから','つまずき共感'];
+function loadHandTags(){ try{ const a=JSON.parse(localStorage.getItem(HANDTAGKEY)); return Array.isArray(a)&&a.length?a:DEFAULT_HANDTAGS.slice(); }catch(e){ return DEFAULT_HANDTAGS.slice(); } }
+function saveHandTags(a){ try{ localStorage.setItem(HANDTAGKEY, JSON.stringify(a)); }catch(e){} }
 
 async function load(){
   try{
@@ -679,8 +699,11 @@ function renderLog(app){
   const f5=$(`<div class="sec"></div>`); app.appendChild(f5); drawPeople(f5);
 }
 
+function postShort(p){ const t=new Date(p.ts); const hm=`${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`; return `${hm} ${(p.text||'(本文なし)').replace(/\n/g,' ').slice(0,22)}`; }
 function drawDailyForm(wrap){
   const logs=loadLog(); const d=LOG_DATE; const rec=logs[d]||{};
+  const dayPosts=(DATA&&DATA.posts?DATA.posts:[]).filter(p=>dateOf(p.ts)===d).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+  const rallyOpts=`<option value="">— 選ばない —</option>`+dayPosts.map(p=>`<option value="${p.id}"${rec.rallySrc===p.id?' selected':''}>${escapeHtml(postShort(p))}</option>`).join('');
   wrap.innerHTML=`
     <div class="sec-h">📒 今日のまとめ（1日1件）<span class="ln"></span></div>
     <div class="card logform">
@@ -692,15 +715,20 @@ function drawDailyForm(wrap){
         <div><label>🎯 本命の話ができた人数</label><input type="number" class="lg-honmei" inputmode="numeric" value="${rec.honmei??''}"></div>
         <div><label>🔁 ラリー継続（3往復＋）人数</label><input type="number" class="lg-rally" inputmode="numeric" value="${rec.rally??''}"></div>
         <div><label>📌 ピン/note紹介できた人数</label><input type="number" class="lg-intro" inputmode="numeric" value="${rec.intro??''}"></div>
+        <div><label>3️⃣ ③を選んだ人数</label><input type="number" class="lg-c3" inputmode="numeric" value="${rec.c3??''}"></div>
       </div>
-      <label>🗣️ 気になった声（一言）</label><textarea class="lg-voice" placeholder="コメントの中身・印象など">${rec.voice?escapeHtml(rec.voice):''}</textarea>
+      <label>🔁 ラリーのきっかけ投稿（任意）</label>
+      <select class="lg-rallysrc">${rallyOpts}</select>
+      ${dayPosts.length?'':'<div style="font-size:11px;color:var(--muted);margin-top:4px;">※この日の投稿が見つからない時は「選ばない」のままでOK</div>'}
       <button class="lg-save">${logs[d]?'この日のまとめを更新':'保存する'}</button>
     </div>`;
   const q=(s)=>wrap.querySelector(s);
   q('.lg-date').onchange=(e)=>{ LOG_DATE=e.target.value; drawDailyForm(wrap); };
   q('.lg-save').onclick=()=>{
     const logs=loadLog();
-    logs[LOG_DATE]={ followers:numOrNull(q('.lg-fol').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value), honmei:numOrNull(q('.lg-honmei').value), rally:numOrNull(q('.lg-rally').value), intro:numOrNull(q('.lg-intro').value), voice:q('.lg-voice').value.trim() };
+    const rsId=q('.lg-rallysrc')?q('.lg-rallysrc').value:''; let rsLabel=null;
+    if(rsId){ const pp=(DATA&&DATA.posts?DATA.posts:[]).find(p=>p.id===rsId); if(pp){ const t=new Date(pp.ts); rsLabel=`${t.getMonth()+1}/${t.getDate()} ${postShort(pp)}`; } }
+    logs[LOG_DATE]={ followers:numOrNull(q('.lg-fol').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value), honmei:numOrNull(q('.lg-honmei').value), rally:numOrNull(q('.lg-rally').value), intro:numOrNull(q('.lg-intro').value), c3:numOrNull(q('.lg-c3').value), rallySrc:rsId||null, rallySrcLabel:rsLabel };
     saveLog(logs);
     const fol=numOrNull(q('.lg-fol').value); if(fol!=null){ const ff=loadFollowers(); ff[LOG_DATE]=fol; saveFollowers(ff); }
     render(); window.scrollTo({top:0,behavior:'smooth'});
@@ -841,6 +869,7 @@ function drawLogAgg(agg){
   const sales=daily.reduce((a,r)=>a+(r.sales||0),0);
   const rally=daily.reduce((a,r)=>a+(r.rally||0),0);
   const intro=daily.reduce((a,r)=>a+(r.intro||0),0);
+  const c3=daily.reduce((a,r)=>a+(r.c3||0),0);
   const cell=(v)=> v==null?'—':nf(v);
   const avgBy=(fn,key)=>{ const xs=exps.filter(fn).map(e=>e[key]).filter(v=>v!=null); return xs.length? Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null; };
   const cntImg=(img)=>exps.filter(e=>e.image===img).length;
@@ -864,7 +893,17 @@ function drawLogAgg(agg){
         </table></div>`;
     }
   }
-  html+=`<div class="card" style="margin-top:12px;"><div class="peak">🎯 本命の話：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b><br>🔁 ラリー3往復＋：合計 <b>${nf(rally)}人</b>　📌 ピン/note紹介：合計 <b>${nf(intro)}人</b></div></div>`;
+  html+=`<div class="card" style="margin-top:12px;"><div class="peak">🎯 本命の話：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b><br>🔁 ラリー3往復＋：合計 <b>${nf(rally)}人</b>　📌 ピン/note紹介：合計 <b>${nf(intro)}人</b><br>3️⃣ ③を選んだ人：合計 <b>${nf(c3)}人</b></div></div>`;
+  // 手挙げタグ別のミニ集計
+  const hands=loadHands(); const htags=loadHandTags(); const tstat={}; htags.forEach(t=>tstat[t]={c:0,sum:0,rally:0});
+  Object.keys(hands).forEach(id=>{ const h=hands[id]; if(h&&h.tag){ (tstat[h.tag]=tstat[h.tag]||{c:0,sum:0,rally:0}); tstat[h.tag].c++; tstat[h.tag].sum+=(h.hands||0); } });
+  Object.values(loadLog()).forEach(r=>{ if(r.rallySrc&&r.rally){ const h=hands[r.rallySrc]; if(h&&h.tag){ (tstat[h.tag]=tstat[h.tag]||{c:0,sum:0,rally:0}); tstat[h.tag].rally+=(r.rally||0); } } });
+  const trows=Object.entries(tstat).filter(([t,v])=>v.c||v.rally);
+  if(trows.length){
+    html+=`<div class="sec-h" style="margin-top:18px;">🙋 手挙げタグ別<span class="ln"></span></div><div class="card">`+
+      trows.map(([t,v])=>`<div class="pprow"><div><b>${escapeHtml(t)}</b><div class="pp-m">${v.c}本 ・ 🙋合計${v.sum}人 ・ 平均${v.c?(Math.round(v.sum/v.c*10)/10):0}人 ・ ラリー${v.rally}人</div></div></div>`).join('')+
+      `</div>`;
+  }
   const ppl=loadPeople();
   if(ppl.length){
     const cnt={A:0,B:0,C:0,D:0}; ppl.forEach(p=>{ if(cnt[p.box]!=null) cnt[p.box]++; });
@@ -921,12 +960,14 @@ function buildContext(posts){
   let patLines='';
   Object.entries(pat).forEach(([k,v])=>{ if(v.c) patLines += `- ${k}：${v.c}件 / 平均いいね${Math.round(v.likes/v.c)} / 平均コメント${Math.round(v.replies/v.c)}\n`; });
 
+  const hands=loadHands();
   let postLines='';
   posts.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).forEach(p=>{
     const d=new Date(p.ts);
     const dt=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     const t=(p.text||'(本文なし)').replace(/\n/g,' ');
-    postLines += `[${dt}｜${patternOf(p)}｜${hasMedia(p)?'画像/動画':'文字'}] 表示${p.views} いいね${p.likes} コメント${p.replies} リポスト${p.reposts} 引用${p.quotes}\n本文：${t}\n\n`;
+    const hh=hands[p.id]; const handStr=(hh&&(hh.hands!=null||hh.tag))?`｜🙋手挙げ${hh.hands??'-'}人${hh.tag?'／タグ:'+hh.tag:''}`:'';
+    postLines += `[${dt}｜${patternOf(p)}｜${hasMedia(p)?'画像/動画':'文字'}${handStr}] 表示${p.views} いいね${p.likes} コメント${p.replies} リポスト${p.reposts} 引用${p.quotes}\n本文：${t}\n\n`;
   });
 
   const prof=[];
@@ -940,7 +981,12 @@ function buildContext(posts){
   const fol=loadFollowers(); const folDates=Object.keys(fol).sort();
   const folLine = folDates.length ? folDates.map(d=>`${d}:${fol[d]}`).join(' / ') : 'なし';
   const dl=loadLog(); const dlDates=Object.keys(dl).sort();
-  let dailyLines=''; dlDates.forEach(d=>{ const r=dl[d]; dailyLines+=`- ${d}｜notePV ${r.pv??'-'}／売上 ${r.sales??'-'}円／本命の話 ${r.honmei??'-'}人／ラリー3往復+ ${r.rally??'-'}人／ピンnote紹介 ${r.intro??'-'}人${r.voice?'／声:'+r.voice.replace(/\n/g,' '):''}\n`; });
+  let dailyLines=''; dlDates.forEach(d=>{ const r=dl[d]; dailyLines+=`- ${d}｜notePV ${r.pv??'-'}／売上 ${r.sales??'-'}円／本命の話 ${r.honmei??'-'}人／ラリー3往復+ ${r.rally??'-'}人／ピンnote紹介 ${r.intro??'-'}人／③選択 ${r.c3??'-'}人${r.rallySrcLabel?'／ラリーきっかけ投稿:'+r.rallySrcLabel:''}\n`; });
+  // 手挙げタグ別の集計（本数 / 🙋合計 / 🙋平均 / その投稿からのラリー人数）
+  const hTagStat={};
+  Object.keys(hands).forEach(id=>{ const h=hands[id]; if(h&&h.tag){ (hTagStat[h.tag]=hTagStat[h.tag]||{c:0,sum:0,rally:0}); hTagStat[h.tag].c++; hTagStat[h.tag].sum+=(h.hands||0); } });
+  Object.values(dl).forEach(r=>{ if(r.rallySrc&&r.rally){ const h=hands[r.rallySrc]; if(h&&h.tag){ (hTagStat[h.tag]=hTagStat[h.tag]||{c:0,sum:0,rally:0}); hTagStat[h.tag].rally+=(r.rally||0); } } });
+  let handTagLines=''; Object.entries(hTagStat).forEach(([t,v])=>{ if(v.c||v.rally) handTagLines+=`- ${t}：${v.c}本 / 🙋合計${v.sum}人 / 🙋平均${v.c?Math.round(v.sum/v.c*10)/10:0}人 / その投稿からのラリー${v.rally}人\n`; });
   const ex=loadExp();
   let expLines=''; ex.slice().sort((a,b)=> a.date<b.date?1:-1).forEach(e=>{ expLines+=`- ${e.date} ${e.slot||''}｜${e.image==='あり'?'画像あり':'画像なし'}／${e.tree==='ツリー'?'ツリー':'単発'}${e.label?'／'+e.label:''}｜本文(表示${e.views??'-'}/いいね${e.likes??'-'})・返信(表示${e.replyViews??'-'}/いいね${e.replyLikes??'-'})\n`; });
   const recBlock = `
@@ -948,7 +994,7 @@ function buildContext(posts){
 【あなたの手入力の記録（アプリ内・最優先で活用してください）】
 ※コメント数には必ず私（発信者）の返信が含まれます（毎投稿で返信するため）。この前提で読んでください。
 ■ フォロワー数の推移：${folLine}
-${dlDates.length?`■ note/売上/本命（1日1件）\n${dailyLines}`:''}${ex.length?`■ 実験ログ（Threads投稿・画像有無/ツリー有無/時間帯/試したこと）\n${expLines}`:''}`;
+${dlDates.length?`■ note/売上/本命（1日1件）\n${dailyLines}`:''}${handTagLines?`■ 手挙げタグ別（本命につながる手を挙げてくれた人／ラリー人数は「ラリーのきっかけ投稿」で選んだ日ぶん）\n${handTagLines}`:''}${ex.length?`■ 実験ログ（Threads投稿・画像有無/ツリー有無/時間帯/試したこと）\n${expLines}`:''}`;
 
   const dataStr = `━━━━━━━━━━
 【アカウント】@${DATA.username||'-'} ／ フォロワー：${DATA.followers!=null?DATA.followers:'不明'} ／ 集計期間：${periodLabel()} ／ ${n}投稿
@@ -1118,6 +1164,26 @@ function renderHours(app){
 }
 
 // ===== 投稿一覧ページ =====
+function renderHandTagEditor(container, onChange){
+  const tags=loadHandTags();
+  container.innerHTML=`<details class="htags"><summary>🏷️ 手挙げタグを編集</summary>
+    <div class="htags-body">
+      ${tags.map((t,i)=>`<div class="htag-row"><input type="text" class="htag-in" data-i="${i}" value="${escapeHtml(t)}"><button class="htag-del" data-i="${i}">✕</button></div>`).join('')}
+      <div class="htag-row"><input type="text" class="htag-new" placeholder="新しいタグを追加"><button class="htag-add">＋追加</button></div>
+      <div class="htag-note">※名前を変えると、そのタグが付いた投稿の記録も自動で新しい名前に変わります</div>
+    </div></details>`;
+  const q=(s)=>container.querySelector(s);
+  container.querySelectorAll('.htag-in').forEach(inp=> inp.onchange=()=>{
+    const tg=loadHandTags(); const i=+inp.dataset.i; const oldName=tg[i]; const v=inp.value.trim();
+    if(!v||v===oldName){ inp.value=oldName; return; }
+    tg[i]=v; saveHandTags(tg);
+    const hs=loadHands(); let ch=false; Object.keys(hs).forEach(k=>{ if(hs[k]&&hs[k].tag===oldName){ hs[k].tag=v; ch=true; } }); if(ch) saveHands(hs);
+    onChange&&onChange();
+  });
+  container.querySelectorAll('.htag-del').forEach(b=> b.onclick=()=>{ const tg=loadHandTags(); tg.splice(+b.dataset.i,1); saveHandTags(tg); renderHandTagEditor(container,onChange); onChange&&onChange(); });
+  q('.htag-add').onclick=()=>{ const v=q('.htag-new').value.trim(); if(!v) return; const tg=loadHandTags(); tg.push(v); saveHandTags(tg); renderHandTagEditor(container,onChange); onChange&&onChange(); };
+}
+
 function renderList(app){
   const bar = $(`<div class="listbar">
     <input class="search" type="text" placeholder="🔍 本文を検索…">
@@ -1130,8 +1196,11 @@ function renderList(app){
     </select>
   </div>`);
   app.appendChild(bar);
+  const tagWrap = $(`<div id="handtagwrap"></div>`);
+  app.appendChild(tagWrap);
   const listWrap = $(`<div id="listwrap"></div>`);
   app.appendChild(listWrap);
+  renderHandTagEditor(tagWrap, ()=>draw());
 
   const search = bar.querySelector('.search');
   const sel = bar.querySelector('.sortsel');
@@ -1144,6 +1213,8 @@ function renderList(app){
     let arr = filtered();
     const q = LIST_Q.trim();
     if(q) arr = arr.filter(p=> (p.text||'').includes(q));
+    const hands = loadHands();
+    const tags = loadHandTags();
     const sorters = {
       new:  (a,b)=> new Date(b.ts)-new Date(a.ts),
       views:(a,b)=> (b.views||0)-(a.views||0),
@@ -1159,6 +1230,9 @@ function renderList(app){
       const d = new Date(p.ts);
       const date = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
       const typ = hasMedia(p) ? '🖼️ 画像/動画' : '📝 文字';
+      const h = hands[p.id]||{};
+      const tagOpts = `<option value="">タグなし</option>`+tags.map(t=>`<option value="${escapeHtml(t)}"${h.tag===t?' selected':''}>${escapeHtml(t)}</option>`).join('');
+      const filled = (h.hands!=null||h.tag);
       return `<div class="pcard">
         <div class="pmeta"><span>${typ} ・ ${date}</span>${p.permalink?`<a class="plink" href="${p.permalink}" target="_blank" rel="noopener">開く ↗</a>`:''}</div>
         <div class="ptext">${escapeHtml(p.text||'(本文なし)')}</div>
@@ -1170,8 +1244,16 @@ function renderList(app){
           <div class="mt"><span>✍️</span><b>${nf(p.quotes)}</b><i>引用</i></div>
           <div class="mt hlmt"><span>🔥</span><b>${egr(p).toFixed(1)}%</b><i>EG率</i></div>
         </div>
+        <div class="handrow${filled?' on':''}">
+          <span class="hr-lb">🙋 手を挙げた人</span>
+          <input type="number" class="hr-n" inputmode="numeric" data-id="${p.id}" value="${h.hands??''}" placeholder="人数">
+          <select class="hr-tag" data-id="${p.id}">${tagOpts}</select>
+        </div>
       </div>`;
     }).join('');
+
+    listWrap.querySelectorAll('.hr-n').forEach(inp=> inp.onchange=()=>{ const hs=loadHands(); const id=inp.dataset.id; const rec=hs[id]||{}; rec.hands=numOrNull(inp.value); hs[id]=rec; saveHands(hs); inp.closest('.handrow').classList.toggle('on', rec.hands!=null||!!rec.tag); });
+    listWrap.querySelectorAll('.hr-tag').forEach(s=> s.onchange=()=>{ const hs=loadHands(); const id=s.dataset.id; const rec=hs[id]||{}; rec.tag=s.value; hs[id]=rec; saveHands(hs); s.closest('.handrow').classList.toggle('on', rec.hands!=null||!!rec.tag); });
   }
 
   search.oninput = ()=>{ LIST_Q = search.value; draw(); };
