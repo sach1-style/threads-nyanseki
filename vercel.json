@@ -1,6 +1,7 @@
 {
   "functions": {
     "api/insights.js": { "maxDuration": 60 },
-    "api/replies.js": { "maxDuration": 60 }
+    "api/replies.js": { "maxDuration": 60 },
+    "api/dayreplies.js": { "maxDuration": 60 }
   }
 }

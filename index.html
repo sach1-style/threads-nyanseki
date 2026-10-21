@@ -67,6 +67,12 @@
   .htag-in,.htag-new{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;font-family:inherit;color:var(--text);background:var(--bg);}
   .htag-del,.htag-add{border:1px solid var(--line);background:var(--bg);color:var(--brown);border-radius:10px;padding:0 13px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;}
   .htag-note{font-size:10.5px;color:var(--muted);margin-top:8px;line-height:1.5;}
+  .dcmask{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--brown);font-weight:700;margin:10px 2px 4px;cursor:pointer;}
+  .dcmask input{width:17px;height:17px;accent-color:var(--sage-deep,#6E9A4E);}
+  .dcbtns{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+  .dc-status{font-size:12px;margin-top:10px;line-height:1.6;}
+  .dc-ok{color:var(--sage-deep,#5f8a3f);font-weight:700;}
+  .dc-err{color:#b84a3a;font-weight:700;}
 
   .backbar{padding:14px 0 0;}
   .backbtn{background:var(--card);border:1px solid var(--line);color:var(--brown);border-radius:999px;padding:9px 16px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;}
@@ -331,6 +337,14 @@ const HANDTAGKEY='nyanseki_handtags_v1';
 const DEFAULT_HANDTAGS=['好きを形に','始めたい・まだこれから','つまずき共感'];
 function loadHandTags(){ try{ const a=JSON.parse(localStorage.getItem(HANDTAGKEY)); return Array.isArray(a)&&a.length?a:DEFAULT_HANDTAGS.slice(); }catch(e){ return DEFAULT_HANDTAGS.slice(); } }
 function saveHandTags(a){ try{ localStorage.setItem(HANDTAGKEY, JSON.stringify(a)); }catch(e){} }
+// 前日の会話データ（日付ごとに保存）＋「ユーザー名を伏せる」設定
+const DAYCONVKEY='nyanseki_dayconv_v1';
+function loadDayConv(){ try{ return JSON.parse(localStorage.getItem(DAYCONVKEY))||{}; }catch(e){ return {}; } }
+function saveDayConv(o){ try{ localStorage.setItem(DAYCONVKEY, JSON.stringify(o)); }catch(e){} }
+const MASKKEY='nyanseki_masknames_v1';
+function loadMask(){ try{ return localStorage.getItem(MASKKEY)==='1'; }catch(e){ return false; } }
+function saveMask(b){ try{ localStorage.setItem(MASKKEY, b?'1':'0'); }catch(e){} }
+function jstYesterday(){ const d=new Date(); d.setDate(d.getDate()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 async function load(){
   try{
@@ -1027,6 +1041,63 @@ ${dataStr}
 以上のデータだけを根拠に、上記フォーマットで日本語のレポートを書いてください。`;
 }
 
+// ===== 前日の会話データ（コピペ用） =====
+function dc_cut(s,n){ s=(s||'').replace(/\n/g,' ').trim(); if(!s) return '（本文なし）'; return s.length>n? s.slice(0,n)+'…' : s; }
+function dc_maskMap(data){
+  const order=[]; const push=(n)=>{ if(n && !order.includes(n)) order.push(n); };
+  (data.conversations||[]).forEach(c=>push(c.otherName));
+  const m={}; order.forEach((n,i)=>{ m[n]= i<26 ? String.fromCharCode(65+i) : String.fromCharCode(65+Math.floor(i/26)-1)+String.fromCharCode(65+(i%26)); });
+  return m;
+}
+function dc_name(name, mask, map){ if(!name) return '（不明）'; return mask ? (map[name]||'？') : '@'+name; }
+function buildDayConvText(data, mask){
+  const map = dc_maskMap(data);
+  const L=[];
+  L.push('━━━━━━━━━━');
+  L.push(`【前日の会話データ】${data.date}`);
+  L.push(`返信した数：${data.replyCount}件（自分の投稿：${data.selfPostReplyCount}／相手の投稿：${data.otherPostReplyCount}）`);
+  L.push(`会話した人数：${data.peopleCount}人`);
+  L.push(`ラリー（3往復+）：${data.rallyCount}件／あと一歩（2往復）：${data.almostCount}件`);
+  const convs=(data.conversations||[]);
+  const rally=convs.filter(c=>c.round>=3), almost=convs.filter(c=>c.round===2), ones=convs.filter(c=>c.round===1);
+  const block=(title, list)=>{
+    L.push(''); L.push(`【${title}】`);
+    if(!list.length){ L.push('（なし）'); return; }
+    list.forEach(c=>{
+      L.push(`[${c.rootOwnerIsMe? '自分の投稿':'相手の投稿'}] ${dc_cut(c.rootText,30)}`);
+      L.push(`相手：${dc_name(c.otherName, mask, map)}`);
+      L.push(`往復数：${c.round}`);
+      L.push('やりとり（古い順・1発言80字まで）：');
+      (c.messages||[]).forEach(m=> L.push(` ${m.who==='me'?'わたし':'相手'}：${dc_cut(m.text,80)}`));
+      L.push('');
+    });
+  };
+  block('ラリー', rally);
+  block('あと一歩', almost);
+  L.push(''); L.push('【1往復だけ】');
+  if(!ones.length) L.push('（なし）');
+  else ones.forEach(c=> L.push(`${dc_cut(c.rootText,30)}｜${dc_name(c.otherName,mask,map)}｜1回`));
+  if((data.fallbacks||[]).length){
+    L.push(''); L.push('【会話が取得できなかった投稿（自分の返信数だけ）】');
+    data.fallbacks.forEach(f=> L.push(`${dc_cut(f.rootText,30)}｜自分の返信 ${f.myReplyCount}回`));
+  }
+  if(data.failed>0){ L.push(''); L.push(`取得できなかった投稿：${data.failed}件`); }
+  L.push('━━━━━━━━━━');
+  return L.join('\n');
+}
+function buildWeekConvText(mask){
+  const store=loadDayConv(); const dates=Object.keys(store).sort().reverse().slice(0,7).sort();
+  if(!dates.length) return '';
+  const head=`【直近${dates.length}日ぶんの会話データ】${dates[0]} 〜 ${dates[dates.length-1]}\n（日ごとのまとめを古い順に並べています）\n`;
+  return head + '\n' + dates.map(d=> buildDayConvText(store[d], mask)).join('\n\n');
+}
+// 前日のラリー件数を「ラリー3往復+」欄へ自動入力（手入力済みの日は上書きしない）
+function dc_autofillRally(data){
+  if(!data || !data.date) return;
+  const logs=loadLog(); const r=logs[data.date]||{};
+  if(r.rally==null){ r.rally = data.rallyCount; logs[data.date]=r; saveLog(logs); }
+}
+
 function renderReport(app){
   const posts = filtered();
   app.appendChild($(`<div class="detail-title">🤖 くわしい戦略レポート</div>`));
@@ -1069,6 +1140,58 @@ function renderReport(app){
   app.appendChild($(`<div class="repnote">↓ コピーされる内容（確認用。うまくコピーできない時はこの枠から手動で）</div>`));
   ta.value = buildReportPrompt(posts);
   app.appendChild(ta);
+
+  drawDayConv(app);
+}
+
+function drawDayConv(app){
+  const yest = jstYesterday();
+  const box = $(`<div class="dcbox">
+    <div class="sec-h" style="margin-top:24px;">📆 前日の会話データ<span class="ln"></span></div>
+    <div class="repintro">前日（${yest}）にあなたがThreadsでした返信を自動で集めて、会話の深まり（ラリー）を分析用テキストにします。ボタンを押すだけ🐾</div>
+    <label class="dcmask"><input type="checkbox" class="dc-mask"> 🙈 ユーザー名を伏せる（A, B, C…で出力）</label>
+    <div class="dcbtns">
+      <button class="copybtn dc-day">📆 前日の会話データをコピー</button>
+      <button class="copybtn dc-week" style="background:var(--card);color:var(--brown);border:1px solid var(--line);">🗓️ 直近7日分をまとめてコピー</button>
+    </div>
+    <div class="dc-status"></div>
+    <textarea class="reptext dc-ta" readonly placeholder="ここに取得した会話データが表示されます（確認用）"></textarea>
+  </div>`);
+  app.appendChild(box);
+  const q=(s)=>box.querySelector(s);
+  const maskCb=q('.dc-mask'); maskCb.checked=loadMask();
+  maskCb.onchange=()=>{ saveMask(maskCb.checked); const store=loadDayConv(); if(store[yest]) q('.dc-ta').value=buildDayConvText(store[yest], maskCb.checked); };
+
+  async function copyOut(text, btn, label){
+    q('.dc-ta').value=text;
+    let ok=false;
+    try{ await navigator.clipboard.writeText(text); ok=true; }
+    catch(e){ try{ q('.dc-ta').focus(); q('.dc-ta').select(); ok=document.execCommand('copy'); }catch(_){} }
+    btn.textContent = ok ? '✅ コピー完了！claude.aiに貼ってね' : '↓ 下の枠からコピーしてね';
+    btn.classList.add('done'); setTimeout(()=>{ btn.textContent=label; btn.classList.remove('done'); }, 3500);
+  }
+
+  q('.dc-day').onclick=async()=>{
+    const btn=q('.dc-day'); const st=q('.dc-status');
+    btn.disabled=true; btn.textContent='取得中…⏳（少し時間がかかるよ）'; st.textContent='';
+    try{
+      const r=await fetch('/api/dayreplies?date='+encodeURIComponent(yest));
+      const data=await r.json();
+      if(data.error){ st.innerHTML=`<span class="dc-err">⚠️ ${escapeHtml(data.error)}</span>`; btn.disabled=false; btn.textContent='📆 前日の会話データをコピー'; return; }
+      const store=loadDayConv(); store[data.date]=data; saveDayConv(store);
+      dc_autofillRally(data);
+      st.innerHTML=`<span class="dc-ok">✅ ${data.date}：返信${data.replyCount}件・会話${data.peopleCount}人・ラリー${data.rallyCount}件（記録の「ラリー3往復+」に自動反映${loadLog()[data.date]&&loadLog()[data.date].rally===data.rallyCount?'済':'／手入力があればそのまま'}）</span>`;
+      await copyOut(buildDayConvText(data, maskCb.checked), btn, '📆 前日の会話データをコピー');
+      btn.disabled=false;
+    }catch(e){ st.innerHTML=`<span class="dc-err">⚠️ ${escapeHtml(String(e.message||e))}</span>`; btn.disabled=false; btn.textContent='📆 前日の会話データをコピー'; }
+  };
+
+  q('.dc-week').onclick=async()=>{
+    const btn=q('.dc-week');
+    const text=buildWeekConvText(maskCb.checked);
+    if(!text){ q('.dc-status').innerHTML=`<span class="dc-err">まだ保存データがありません。先に「前日の会話データをコピー」を何日か押してね😊</span>`; return; }
+    await copyOut(text, btn, '🗓️ 直近7日分をまとめてコピー');
+  };
 }
 
 // ===== 指標の深掘りページ（トップ3・ワースト3・共通点） =====
