@@ -727,7 +727,8 @@ function drawDailyForm(wrap){
       <label>日付</label><input type="date" class="lg-date" value="${d}">
       <div class="lg-grid" style="margin-top:6px;">
         <div><label>👥 フォロワー数</label><input type="number" class="lg-fol" inputmode="numeric" value="${rec.followers??(DATA&&DATA.followers!=null?DATA.followers:'')}"></div>
-        <div><label>📈 noteページビュー</label><input type="number" class="lg-pv" inputmode="numeric" value="${rec.pv??''}"></div>
+        <div><label>🔗 ピンLP訪問数（主）</label><input type="number" class="lg-lpv" inputmode="numeric" value="${rec.lpv??''}"></div>
+        <div><label>📈 note PV（参考）</label><input type="number" class="lg-pv" inputmode="numeric" value="${rec.pv??''}"></div>
         <div><label>💰 note売上(円)</label><input type="number" class="lg-sales" inputmode="numeric" value="${rec.sales??''}"></div>
         <div><label>🎯 本命の話ができた人数</label><input type="number" class="lg-honmei" inputmode="numeric" value="${rec.honmei??''}"></div>
         <div><label>🔁 ラリー継続（3往復＋）人数</label><input type="number" class="lg-rally" inputmode="numeric" value="${rec.rally??''}"></div>
@@ -745,7 +746,7 @@ function drawDailyForm(wrap){
     const logs=loadLog();
     const rsId=q('.lg-rallysrc')?q('.lg-rallysrc').value:''; let rsLabel=null;
     if(rsId){ const pp=(DATA&&DATA.posts?DATA.posts:[]).find(p=>p.id===rsId); if(pp){ const t=new Date(pp.ts); rsLabel=`${t.getMonth()+1}/${t.getDate()} ${postShort(pp)}`; } }
-    logs[LOG_DATE]={ followers:numOrNull(q('.lg-fol').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value), honmei:numOrNull(q('.lg-honmei').value), rally:numOrNull(q('.lg-rally').value), intro:numOrNull(q('.lg-intro').value), c3:numOrNull(q('.lg-c3').value), rallySrc:rsId||null, rallySrcLabel:rsLabel };
+    logs[LOG_DATE]={ followers:numOrNull(q('.lg-fol').value), lpv:numOrNull(q('.lg-lpv').value), pv:numOrNull(q('.lg-pv').value), sales:numOrNull(q('.lg-sales').value), honmei:numOrNull(q('.lg-honmei').value), rally:numOrNull(q('.lg-rally').value), intro:numOrNull(q('.lg-intro').value), c3:numOrNull(q('.lg-c3').value), rallySrc:rsId||null, rallySrcLabel:rsLabel };
     saveLog(logs);
     const fol=numOrNull(q('.lg-fol').value); if(fol!=null){ const ff=loadFollowers(); ff[LOG_DATE]=fol; saveFollowers(ff); }
     render(); window.scrollTo({top:0,behavior:'smooth'});
@@ -887,6 +888,7 @@ function drawLogAgg(agg){
   const rally=daily.reduce((a,r)=>a+(r.rally||0),0);
   const intro=daily.reduce((a,r)=>a+(r.intro||0),0);
   const c3=daily.reduce((a,r)=>a+(r.c3||0),0);
+  const lpv=daily.reduce((a,r)=>a+(r.lpv||0),0);
   const cell=(v)=> v==null?'—':nf(v);
   const avgBy=(fn,key)=>{ const xs=exps.filter(fn).map(e=>e[key]).filter(v=>v!=null); return xs.length? Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null; };
   const cntImg=(img)=>exps.filter(e=>e.image===img).length;
@@ -910,7 +912,7 @@ function drawLogAgg(agg){
         </table></div>`;
     }
   }
-  html+=`<div class="card" style="margin-top:12px;"><div class="peak">🎯 本命の話：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b><br>🔁 ラリー3往復＋：合計 <b>${nf(rally)}人</b>　📌 ピン/note紹介：合計 <b>${nf(intro)}人</b><br>3️⃣ ③を選んだ人：合計 <b>${nf(c3)}人</b></div></div>`;
+  html+=`<div class="card" style="margin-top:12px;"><div class="peak">🔗 ピンLP訪問：合計 <b>${nf(lpv)}</b>（主指標）<br>🎯 本命の話：合計 <b>${nf(honmei)}人</b>　💰 note売上：合計 <b>${nf(sales)}円</b><br>🔁 ラリー3往復＋：合計 <b>${nf(rally)}人</b>　📌 ピン/note紹介：合計 <b>${nf(intro)}人</b><br>3️⃣ ③を選んだ人：合計 <b>${nf(c3)}人</b></div></div>`;
   // 手挙げタグ別のミニ集計
   const hands=loadHands(); const htags=loadHandTags(); const tstat={}; htags.forEach(t=>tstat[t]={c:0,sum:0,rally:0});
   Object.keys(hands).forEach(id=>{ const h=hands[id]; if(h&&h.tag){ (tstat[h.tag]=tstat[h.tag]||{c:0,sum:0,rally:0}); tstat[h.tag].c++; tstat[h.tag].sum+=(h.hands||0); } });
@@ -998,7 +1000,7 @@ function buildContext(posts){
   const fol=loadFollowers(); const folDates=Object.keys(fol).sort();
   const folLine = folDates.length ? folDates.map(d=>`${d}:${fol[d]}`).join(' / ') : 'なし';
   const dl=loadLog(); const dlDates=Object.keys(dl).sort();
-  let dailyLines=''; dlDates.forEach(d=>{ const r=dl[d]; dailyLines+=`- ${d}｜notePV ${r.pv??'-'}／売上 ${r.sales??'-'}円／本命の話 ${r.honmei??'-'}人／ラリー3往復+ ${r.rally??'-'}人／ピンnote紹介 ${r.intro??'-'}人／③選択 ${r.c3??'-'}人${r.rallySrcLabel?'／ラリーきっかけ投稿:'+r.rallySrcLabel:''}\n`; });
+  let dailyLines=''; dlDates.forEach(d=>{ const r=dl[d]; dailyLines+=`- ${d}｜LP訪問 ${r.lpv??'-'}（主指標）／notePV ${r.pv??'-'}（参考）／売上 ${r.sales??'-'}円／本命の話 ${r.honmei??'-'}人／ラリー3往復+ ${r.rally??'-'}人／ピンnote紹介 ${r.intro??'-'}人／③選択 ${r.c3??'-'}人${r.rallySrcLabel?'／ラリーきっかけ投稿:'+r.rallySrcLabel:''}\n`; });
   // 手挙げタグ別の集計（本数 / 🙋合計 / 🙋平均 / その投稿からのラリー人数）
   const hTagStat={};
   Object.keys(hands).forEach(id=>{ const h=hands[id]; if(h&&h.tag){ (hTagStat[h.tag]=hTagStat[h.tag]||{c:0,sum:0,rally:0}); hTagStat[h.tag].c++; hTagStat[h.tag].sum+=(h.hands||0); } });
@@ -1061,13 +1063,14 @@ function buildDayConvText(data, mask){
   L.push(`返信した数：${data.replyCount}件（自分の投稿：${data.selfPostReplyCount}／相手の投稿：${data.otherPostReplyCount}）`);
   L.push(`会話した人数：${data.peopleCount}人`);
   L.push(`ラリー（3往復+）：${data.rallyCount}件／あと一歩（2往復）：${data.almostCount}件`);
+  L.push(`ピン紹介：${data.pinIntroCount||0}件`);
   const convs=(data.conversations||[]);
   const rally=convs.filter(c=>c.round>=3), almost=convs.filter(c=>c.round===2), ones=convs.filter(c=>c.round===1);
   const block=(title, list)=>{
     L.push(''); L.push(`【${title}】`);
     if(!list.length){ L.push('（なし）'); return; }
     list.forEach(c=>{
-      L.push(`[${c.rootOwnerIsMe? '自分の投稿':'相手の投稿'}] ${dc_cut(c.rootText,30)}`);
+      L.push(`[${c.rootOwnerIsMe? '自分の投稿':'相手の投稿'}] ${dc_cut(c.rootText,30)}${c.pinIntro?' 【ピン紹介あり】':''}`);
       L.push(`相手：${dc_name(c.otherName, mask, map)}`);
       L.push(`往復数：${c.round}`);
       L.push('やりとり（古い順・1発言80字まで）：');
@@ -1079,7 +1082,7 @@ function buildDayConvText(data, mask){
   block('あと一歩', almost);
   L.push(''); L.push('【1往復だけ】');
   if(!ones.length) L.push('（なし）');
-  else ones.forEach(c=> L.push(`${dc_cut(c.rootText,30)}｜${dc_name(c.otherName,mask,map)}｜1回`));
+  else ones.forEach(c=> L.push(`${dc_cut(c.rootText,30)}｜${dc_name(c.otherName,mask,map)}｜1回${c.pinIntro?' 🔗ピン':''}`));
   if((data.fallbacks||[]).length){
     L.push(''); L.push('【会話が取得できなかった投稿（自分の返信数だけ）】');
     data.fallbacks.forEach(f=> L.push(`${dc_cut(f.rootText,30)}｜自分の返信 ${f.myReplyCount}回`));
@@ -1094,11 +1097,13 @@ function buildWeekConvText(mask){
   const head=`【直近${dates.length}日ぶんの会話データ】${dates[0]} 〜 ${dates[dates.length-1]}\n（日ごとのまとめを古い順に並べています）\n`;
   return head + '\n' + dates.map(d=> buildDayConvText(store[d], mask)).join('\n\n');
 }
-// 前日のラリー件数を「ラリー3往復+」欄へ自動入力（手入力済みの日は上書きしない）
+// 前日の集計を記録へ自動入力（手入力済みの日は上書きしない）
 function dc_autofillRally(data){
   if(!data || !data.date) return;
-  const logs=loadLog(); const r=logs[data.date]||{};
-  if(r.rally==null){ r.rally = data.rallyCount; logs[data.date]=r; saveLog(logs); }
+  const logs=loadLog(); const r=logs[data.date]||{}; let changed=false;
+  if(r.rally==null){ r.rally = data.rallyCount; changed=true; }       // ラリー3往復+
+  if(r.intro==null){ r.intro = data.pinIntroCount||0; changed=true; } // ピンnote紹介
+  if(changed){ logs[data.date]=r; saveLog(logs); }
 }
 
 function renderReport(app){
@@ -1186,7 +1191,7 @@ function drawDayConv(app){
       if(data.error){ st.innerHTML=`<span class="dc-err">⚠️ ${escapeHtml(data.error)}</span>`; btn.disabled=false; btn.textContent='📆 昨日ぶんの会話をコピー'; return; }
       const store=loadDayConv(); store[data.date]=data; saveDayConv(store);
       dc_autofillRally(data);
-      st.innerHTML=`<span class="dc-ok">✅ ${data.date}：返信${data.replyCount}件・会話${data.peopleCount}人・ラリー${data.rallyCount}件・あと一歩${data.almostCount}件（記録の「ラリー3往復+」に自動反映${loadLog()[data.date]&&loadLog()[data.date].rally===data.rallyCount?'済':'／手入力があればそのまま'}）</span>`;
+      st.innerHTML=`<span class="dc-ok">✅ ${data.date}：返信${data.replyCount}件・会話${data.peopleCount}人・ラリー${data.rallyCount}件・あと一歩${data.almostCount}件・ピン紹介${data.pinIntroCount||0}件<br>→ 記録の「ラリー3往復+」と「ピンnote紹介」に自動反映（手入力がある日はそのまま）</span>`;
       await copyOut(buildDayConvText(data, maskCb.checked), btn, '📆 昨日ぶんの会話をコピー');
       btn.disabled=false;
     }catch(e){ st.innerHTML=`<span class="dc-err">⚠️ ${escapeHtml(String(e.message||e))}</span>`; btn.disabled=false; btn.textContent='📆 昨日ぶんの会話をコピー'; }
