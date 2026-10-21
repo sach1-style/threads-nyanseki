@@ -37,7 +37,7 @@ export default async function handler(req, res){
 
     // 自分の返信をページ送りで取得（新しい順。対象日より古くなったら打ち切り）
     let myReplies = [];
-    let url = `${BASE}/me/replies?fields=id,text,timestamp,username,permalink,root_post,replied_to&limit=100&access_token=${t}`;
+    let url = `${BASE}/me/replies?fields=id,text,timestamp,username,permalink,root_post{id},replied_to{id}&limit=100&access_token=${t}`;
     let pages = 0, stop = false;
     while(url && pages < 6 && !stop){
       const d = await j(url);
@@ -85,7 +85,7 @@ export default async function handler(req, res){
       // 会話全体を取得
       let conv = null, convOk = false;
       try{
-        let cmsgs = [], curl = `${BASE}/${rid}/conversation?fields=id,username,text,timestamp&limit=100&access_token=${t}`, cp = 0;
+        let cmsgs = [], curl = `${BASE}/${rid}/conversation?fields=id,username,text,timestamp,replied_to{id}&limit=100&access_token=${t}`, cp = 0;
         let convErr = false;
         while(curl && cp < 3){
           const cd = await j(curl);
@@ -103,32 +103,44 @@ export default async function handler(req, res){
         continue;
       }
 
-      // 元投稿自体も1発言として入れる（相手の投稿なら相手の冒頭になる）
-      const msgs = conv.map(m=>({ username: m.username, text: m.text||'', ts: Date.parse(m.timestamp)||0 }));
-      if(rootText || rootTs){ msgs.push({ username: rootOwnerIsMe? myName : (rootOwnerIsMe===false? '__root__' : '__root__'), text: rootText, ts: Date.parse(rootTs)||0, isRoot:true }); }
+      // conversation を「親（誰への返信か）」つきで構築し、1対1のやりとりに整理する
+      const items = conv.map(m=>({
+        id: String(m.id),
+        username: m.username,
+        text: m.text || '',
+        ts: Date.parse(m.timestamp) || 0,
+        parent: m.replied_to ? String(rootIdOf(m.replied_to)) : null,
+      }));
+      const authorById = {}; items.forEach(m=> authorById[m.id]=m.username);
+      const rootAuthor = (rootOwnerIsMe === true) ? myName : null; // 相手の投稿は作者名が不明なことがある
+      const parentAuthor = (m)=>{
+        if(!m.parent) return null;
+        if(m.parent === String(rid)) return rootAuthor; // 元投稿への直返信
+        return authorById[m.parent] || null;
+      };
 
-      // 相手ごとに会話を分ける
-      const others = Array.from(new Set(msgs.map(m=>m.username).filter(u=> u && u!==myName && u!=='__root__')));
-      // 相手の投稿で、相手ユーザー名が取れている場合は root の相手も候補に
-      if(rootOwnerIsMe === false){
-        // 相手の投稿：元投稿の作者を相手として扱う（conversation内にいなくても）
-        // rootの作者名は取得済みでないため、conversation内の非自分ユーザーを相手とする
-      }
-
+      // 会話の相手（自分以外のユーザー）
+      const others = Array.from(new Set(items.map(m=>m.username).filter(u=> u && u!==myName)));
       if(!others.length){
-        // 相手が判別できない（自分の発言だけ見えている等）→ フォールバック的に件数だけ
+        // 相手が判別できない（自分の発言だけ見えている等）→ 件数だけ
         fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe, myReplyCount: myOnRoot.length });
         continue;
       }
 
       for(const u of others){
-        const myN = msgs.filter(m=> m.username===myName).length;
-        const uN  = msgs.filter(m=> m.username===u).length;
+        // 自分とその人の「1対1のやりとり」だけ抜き出す：
+        //  ・その人の発言：元投稿への直返信／自分への返信／親不明（トップのコメント）
+        //  ・自分の発言：その人のコメントへの返信
+        const exchange = items.filter(m=>{
+          if(m.username === u){ const pa = parentAuthor(m); return pa === myName || m.parent === String(rid) || pa === null; }
+          if(m.username === myName){ return parentAuthor(m) === u; }
+          return false;
+        });
+        const myN = exchange.filter(m=> m.username===myName).length;
+        const uN  = exchange.filter(m=> m.username===u).length;
+        if(myN < 1 || uN < 1) continue; // 実際にやりとりが成立していない相手は除外
         const round = Math.min(myN, uN);
-        if(round < 1) continue;
-        const thread = msgs
-          .filter(m=> m.username===myName || m.username===u)
-          .sort((a,b)=> a.ts-b.ts)
+        const thread = exchange.slice().sort((a,b)=> a.ts-b.ts)
           .map(m=>({ who: m.username===myName ? 'me':'other', text: (m.text||'').slice(0,200) }));
         conversations.push({ rootId: rid, rootOwnerIsMe, rootText, rootPermalink, otherName: u, round, messages: thread });
       }
