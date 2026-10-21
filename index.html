@@ -70,6 +70,9 @@
   .dcmask{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--brown);font-weight:700;margin:10px 2px 4px;cursor:pointer;}
   .dcmask input{width:17px;height:17px;accent-color:var(--sage-deep,#6E9A4E);}
   .dcbtns{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+  .dc-weekwrap{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);}
+  .dc-weeknote{font-size:11.5px;color:var(--muted);margin-bottom:8px;}
+  .dc-week{background:var(--card)!important;color:var(--brown)!important;border:1px solid var(--line)!important;box-shadow:none!important;font-size:13px!important;padding:12px!important;}
   .dc-status{font-size:12px;margin-top:10px;line-height:1.6;}
   .dc-ok{color:var(--sage-deep,#5f8a3f);font-weight:700;}
   .dc-err{color:#b84a3a;font-weight:700;}
@@ -1148,11 +1151,14 @@ function drawDayConv(app){
   const yest = jstYesterday();
   const box = $(`<div class="dcbox">
     <div class="sec-h" style="margin-top:24px;">📆 前日の会話データ<span class="ln"></span></div>
-    <div class="repintro">前日（${yest}）にあなたがThreadsでした返信を自動で集めて、会話の深まり（ラリー）を分析用テキストにします。ボタンを押すだけ🐾</div>
-    <label class="dcmask"><input type="checkbox" class="dc-mask"> 🙈 ユーザー名を伏せる（A, B, C…で出力）</label>
+    <div class="repintro">前日（${yest}）にあなたがThreadsでした返信を自動で集めて、「誰とどんな会話ができたか（ラリー）」を分析用テキストにします。<b>ふだんは下の大きいボタンを押すだけ</b>でOK🐾</div>
+    <label class="dcmask"><input type="checkbox" class="dc-mask"> 🙈 相手の名前を伏せて出力する（A, B, C…）</label>
     <div class="dcbtns">
-      <button class="copybtn dc-day">📆 前日の会話データをコピー</button>
-      <button class="copybtn dc-week" style="background:var(--card);color:var(--brown);border:1px solid var(--line);">🗓️ 直近7日分をまとめてコピー</button>
+      <button class="copybtn dc-day">📆 昨日ぶんの会話をコピー</button>
+    </div>
+    <div class="dc-weekwrap">
+      <div class="dc-weeknote">何日かためてから、まとめて分析したい時はこちら ↓</div>
+      <button class="copybtn dc-week">🗓️ ためた日（直近7日）をまとめてコピー</button>
     </div>
     <div class="dc-status"></div>
     <textarea class="reptext dc-ta" readonly placeholder="ここに取得した会話データが表示されます（確認用）"></textarea>
@@ -1177,20 +1183,20 @@ function drawDayConv(app){
     try{
       const r=await fetch('/api/dayreplies?date='+encodeURIComponent(yest));
       const data=await r.json();
-      if(data.error){ st.innerHTML=`<span class="dc-err">⚠️ ${escapeHtml(data.error)}</span>`; btn.disabled=false; btn.textContent='📆 前日の会話データをコピー'; return; }
+      if(data.error){ st.innerHTML=`<span class="dc-err">⚠️ ${escapeHtml(data.error)}</span>`; btn.disabled=false; btn.textContent='📆 昨日ぶんの会話をコピー'; return; }
       const store=loadDayConv(); store[data.date]=data; saveDayConv(store);
       dc_autofillRally(data);
-      st.innerHTML=`<span class="dc-ok">✅ ${data.date}：返信${data.replyCount}件・会話${data.peopleCount}人・ラリー${data.rallyCount}件（記録の「ラリー3往復+」に自動反映${loadLog()[data.date]&&loadLog()[data.date].rally===data.rallyCount?'済':'／手入力があればそのまま'}）</span>`;
-      await copyOut(buildDayConvText(data, maskCb.checked), btn, '📆 前日の会話データをコピー');
+      st.innerHTML=`<span class="dc-ok">✅ ${data.date}：返信${data.replyCount}件・会話${data.peopleCount}人・ラリー${data.rallyCount}件・あと一歩${data.almostCount}件（記録の「ラリー3往復+」に自動反映${loadLog()[data.date]&&loadLog()[data.date].rally===data.rallyCount?'済':'／手入力があればそのまま'}）</span>`;
+      await copyOut(buildDayConvText(data, maskCb.checked), btn, '📆 昨日ぶんの会話をコピー');
       btn.disabled=false;
-    }catch(e){ st.innerHTML=`<span class="dc-err">⚠️ ${escapeHtml(String(e.message||e))}</span>`; btn.disabled=false; btn.textContent='📆 前日の会話データをコピー'; }
+    }catch(e){ st.innerHTML=`<span class="dc-err">⚠️ ${escapeHtml(String(e.message||e))}</span>`; btn.disabled=false; btn.textContent='📆 昨日ぶんの会話をコピー'; }
   };
 
   q('.dc-week').onclick=async()=>{
     const btn=q('.dc-week');
     const text=buildWeekConvText(maskCb.checked);
-    if(!text){ q('.dc-status').innerHTML=`<span class="dc-err">まだ保存データがありません。先に「前日の会話データをコピー」を何日か押してね😊</span>`; return; }
-    await copyOut(text, btn, '🗓️ 直近7日分をまとめてコピー');
+    if(!text){ q('.dc-status').innerHTML=`<span class="dc-err">まだ保存データがありません。先に「昨日ぶんの会話をコピー」を何日か押してね😊</span>`; return; }
+    await copyOut(text, btn, '🗓️ ためた日（直近7日）をまとめてコピー');
   };
 }
 
