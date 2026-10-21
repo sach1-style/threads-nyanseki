@@ -65,85 +65,122 @@ export default async function handler(req, res){
     const useIds = rootIds.slice(0, MAX_ROOTS);
     let failed = Math.max(0, rootIds.length - useIds.length); // 件数上限で見れなかった分
 
-    const conversations = []; // {rootId, rootOwnerIsMe, rootText, rootPermalink, other, otherName, round, messages:[{who,text}]}
+    // ピン紹介（無料ガイド/ピン留め/ピン止め/URL）を自分の発言から判定
+    const PIN_RE = /無料ガイド|ピン留め|ピン止め|ピンどめ|https?:\/\//;
+    const hasPin = (messages)=> (messages||[]).some(m=> m.who==='me' && PIN_RE.test(m.text||''));
+
+    // items（{id,username,text,ts,parent}）から、相手ごとに1対1の会話へ整理する共通処理
+    function buildConvs(items, rid, rootAuthor, rootOwnerIsMe, rootText, rootPermalink){
+      const authorById = {}; items.forEach(m=> authorById[String(m.id)]=m.username);
+      const parentAuthor = (m)=>{
+        if(!m.parent) return null;
+        if(m.parent === String(rid)) return rootAuthor; // 元投稿への直返信（＝元投稿の作者宛て）
+        return authorById[m.parent] || null;
+      };
+      const others = Array.from(new Set(items.map(m=>m.username).filter(u=> u && u!==myName)));
+      const out = [];
+      for(const u of others){
+        const exchange = items.filter(m=>{
+          if(m.username === u){ const pa = parentAuthor(m); return pa === myName || m.parent === String(rid) || pa === null; }
+          if(m.username === myName){ return parentAuthor(m) === u; }
+          return false;
+        });
+        const myMsgs = exchange.filter(m=> m.username===myName);
+        const uN = exchange.filter(m=> m.username===u).length;
+        if(myMsgs.length < 1 || uN < 1) continue; // やりとりが成立していない相手は除外
+        // 往復数＝「相手→わたし」の組の数（自分の返信のうち相手宛ての数）
+        let round = myMsgs.filter(m=> parentAuthor(m)===u).length;
+        if(round < 1) round = Math.min(myMsgs.length, uN);
+        const thread = exchange.slice().sort((a,b)=> a.ts-b.ts)
+          .map(m=>({ who: m.username===myName ? 'me':'other', text: (m.text||'').slice(0,200) }));
+        out.push({ rootId: rid, rootOwnerIsMe, rootText, rootPermalink, otherName: u, round, messages: thread });
+      }
+      return out;
+    }
+
+    // 相手の投稿：自分の返信を起点に、上（replied_to）と下（/replies）へたどって会話を組み立てる
+    let fetchBudget = 150; // 追加探索で使えるAPI呼び出しの安全上限
+    async function walkOthersRoot(rid, myOnRoot, rootAuthor, rootText, rootPermalink){
+      const collected = new Map();
+      const norm = (o, parentKnown)=>({ id:String(o.id), username:o.username||null, text:o.text||'', ts:Date.parse(o.timestamp)||0, parent: o.replied_to ? String(rootIdOf(o.replied_to)) : (parentKnown||null) });
+      const add = (m)=>{ if(m && m.id && !collected.has(String(m.id))) collected.set(String(m.id), m); };
+      const seeds = myOnRoot.slice(0, 15);
+      // 上へ：相手の発言 → さらに上の自分 →…→ 元投稿 まで
+      for(const mr of seeds){
+        add(norm(mr));
+        let pid = mr.replied_to ? String(rootIdOf(mr.replied_to)) : null;
+        let depth = 0;
+        while(pid && pid !== String(rid) && depth < 6 && fetchBudget > 0){
+          if(collected.has(pid)){ pid = collected.get(pid).parent; depth++; continue; }
+          fetchBudget--;
+          let p; try{ p = await j(`${BASE}/${pid}?fields=id,text,username,timestamp,replied_to{id}&access_token=${t}`); }catch(e){ break; }
+          if(!p || p.error) break;
+          const pm = norm(p); add(pm);
+          pid = pm.parent; depth++;
+        }
+      }
+      // 下へ：自分の返信に相手がさらに返してくれた発言、その先の自分…
+      let frontier = seeds.map(m=> String(m.id));
+      let level = 0;
+      while(frontier.length && level < 4 && fetchBudget > 0){
+        const next = [];
+        for(const id of frontier){
+          if(fetchBudget <= 0) break;
+          fetchBudget--;
+          let rr; try{ rr = await j(`${BASE}/${id}/replies?fields=id,text,username,timestamp,replied_to{id}&limit=50&access_token=${t}`); }catch(e){ continue; }
+          if(!rr || rr.error || !Array.isArray(rr.data)) continue;
+          for(const c of rr.data){ add(norm(c, id)); next.push(String(c.id)); }
+        }
+        frontier = next; level++;
+      }
+      return buildConvs(Array.from(collected.values()), rid, rootAuthor, false, rootText, rootPermalink);
+    }
+
+    const conversations = []; // {rootId, rootOwnerIsMe, rootText, rootPermalink, otherName, round, messages, pinIntro}
     const fallbacks = [];     // {rootId, rootText, rootOwnerIsMe, myReplyCount}
     let selfPostReplyCount = 0, otherPostReplyCount = 0;
 
     for(const rid of useIds){
       const myOnRoot = groups[rid];
       // 元投稿のメタ（作者・冒頭）
-      let rootOwnerIsMe = null, rootText = '', rootPermalink = null, rootTs = null;
+      let rootOwnerIsMe = null, rootText = '', rootPermalink = null, rootAuthorName = null;
       try{
-        const rp = await j(`${BASE}/${rid}?fields=id,username,text,timestamp,permalink&access_token=${t}`);
-        if(!rp.error){ rootOwnerIsMe = (myName && rp.username === myName); rootText = rp.text || ''; rootPermalink = rp.permalink || null; rootTs = rp.timestamp || null; }
+        const rp = await j(`${BASE}/${rid}?fields=id,username,text,permalink&access_token=${t}`);
+        if(!rp.error){ rootOwnerIsMe = (myName && rp.username === myName); rootText = rp.text || ''; rootPermalink = rp.permalink || null; rootAuthorName = rp.username || null; }
       }catch(e){ /* 取れなくても続行 */ }
 
       // 返信数の内訳（自分の投稿 / 相手の投稿）
       if(rootOwnerIsMe === true) selfPostReplyCount += myOnRoot.length;
       else otherPostReplyCount += myOnRoot.length;
 
-      // 会話全体を取得
-      let conv = null, convOk = false;
-      try{
-        let cmsgs = [], curl = `${BASE}/${rid}/conversation?fields=id,username,text,timestamp,replied_to{id}&limit=100&access_token=${t}`, cp = 0;
-        let convErr = false;
-        while(curl && cp < 3){
-          const cd = await j(curl);
-          if(cd.error){ convErr = true; break; }
-          if(Array.isArray(cd.data)) cmsgs.push(...cd.data);
-          curl = cd?.paging?.next || null; cp++;
-        }
-        if(!convErr){ conv = cmsgs; convOk = true; }
-      }catch(e){ convOk = false; }
-
-      if(!convOk){
-        // フォールバック：私の返信回数だけ数える
-        fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe, myReplyCount: myOnRoot.length });
-        failed++;
-        continue;
+      let convsForRoot = [];
+      if(rootOwnerIsMe === true){
+        // 自分の投稿：conversation 方式（軽い）
+        let conv = null, convOk = false;
+        try{
+          let cmsgs = [], curl = `${BASE}/${rid}/conversation?fields=id,username,text,timestamp,replied_to{id}&limit=100&access_token=${t}`, cp = 0, convErr = false;
+          while(curl && cp < 3){
+            const cd = await j(curl);
+            if(cd.error){ convErr = true; break; }
+            if(Array.isArray(cd.data)) cmsgs.push(...cd.data);
+            curl = cd?.paging?.next || null; cp++;
+          }
+          if(!convErr){ conv = cmsgs; convOk = true; }
+        }catch(e){ convOk = false; }
+        if(!convOk){ fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe, myReplyCount: myOnRoot.length }); failed++; continue; }
+        const items = conv.map(m=>({ id:String(m.id), username:m.username, text:m.text||'', ts:Date.parse(m.timestamp)||0, parent: m.replied_to ? String(rootIdOf(m.replied_to)) : null }));
+        convsForRoot = buildConvs(items, rid, myName, true, rootText, rootPermalink);
+      } else {
+        // 相手の投稿：たどる方式（上限つき）
+        if(fetchBudget <= 0){ failed++; fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe, myReplyCount: myOnRoot.length }); continue; }
+        convsForRoot = await walkOthersRoot(rid, myOnRoot, rootAuthorName, rootText, rootPermalink);
       }
 
-      // conversation を「親（誰への返信か）」つきで構築し、1対1のやりとりに整理する
-      const items = conv.map(m=>({
-        id: String(m.id),
-        username: m.username,
-        text: m.text || '',
-        ts: Date.parse(m.timestamp) || 0,
-        parent: m.replied_to ? String(rootIdOf(m.replied_to)) : null,
-      }));
-      const authorById = {}; items.forEach(m=> authorById[m.id]=m.username);
-      const rootAuthor = (rootOwnerIsMe === true) ? myName : null; // 相手の投稿は作者名が不明なことがある
-      const parentAuthor = (m)=>{
-        if(!m.parent) return null;
-        if(m.parent === String(rid)) return rootAuthor; // 元投稿への直返信
-        return authorById[m.parent] || null;
-      };
-
-      // 会話の相手（自分以外のユーザー）
-      const others = Array.from(new Set(items.map(m=>m.username).filter(u=> u && u!==myName)));
-      if(!others.length){
-        // 相手が判別できない（自分の発言だけ見えている等）→ 件数だけ
+      if(!convsForRoot.length){
         fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe, myReplyCount: myOnRoot.length });
         continue;
       }
-
-      for(const u of others){
-        // 自分とその人の「1対1のやりとり」だけ抜き出す：
-        //  ・その人の発言：元投稿への直返信／自分への返信／親不明（トップのコメント）
-        //  ・自分の発言：その人のコメントへの返信
-        const exchange = items.filter(m=>{
-          if(m.username === u){ const pa = parentAuthor(m); return pa === myName || m.parent === String(rid) || pa === null; }
-          if(m.username === myName){ return parentAuthor(m) === u; }
-          return false;
-        });
-        const myN = exchange.filter(m=> m.username===myName).length;
-        const uN  = exchange.filter(m=> m.username===u).length;
-        if(myN < 1 || uN < 1) continue; // 実際にやりとりが成立していない相手は除外
-        const round = Math.min(myN, uN);
-        const thread = exchange.slice().sort((a,b)=> a.ts-b.ts)
-          .map(m=>({ who: m.username===myName ? 'me':'other', text: (m.text||'').slice(0,200) }));
-        conversations.push({ rootId: rid, rootOwnerIsMe, rootText, rootPermalink, otherName: u, round, messages: thread });
-      }
+      for(const c of convsForRoot){ c.pinIntro = hasPin(c.messages); conversations.push(c); }
     }
 
     // 判定・集計
@@ -151,6 +188,7 @@ export default async function handler(req, res){
     const almost = conversations.filter(c=> c.round===2);
     const ones  = conversations.filter(c=> c.round===1);
     const people = new Set(conversations.map(c=> c.otherName)).size;
+    const pinIntroCount = conversations.filter(c=> c.pinIntro).length;
 
     return res.status(200).json({
       date, me: myName,
@@ -158,6 +196,7 @@ export default async function handler(req, res){
       selfPostReplyCount, otherPostReplyCount,
       peopleCount: people,
       rallyCount: rally.length, almostCount: almost.length, oneCount: ones.length,
+      pinIntroCount,
       conversations, fallbacks,
       failed,
     });
