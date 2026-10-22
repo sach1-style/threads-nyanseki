@@ -1088,6 +1088,10 @@ function buildDayConvText(data, mask){
     data.fallbacks.forEach(f=> L.push(`${dc_cut(f.rootText,30)}｜自分の返信 ${f.myReplyCount}回`));
   }
   if(data.failed>0){ L.push(''); L.push(`取得できなかった投稿：${data.failed}件`); }
+  const dbg = data.debug||{};
+  L.push('');
+  L.push(`デバッグ：/me/replies 取得 ${dbg.fetchedReplies??data.replyCount}件／振り分けできなかった返信 ${dbg.unresolvedCount??0}件`);
+  if((dbg.unresolved||[]).length){ dbg.unresolved.forEach(u=> L.push(` ・振り分け不可：${dc_cut(u.text,30)}`)); }
   L.push('━━━━━━━━━━');
   return L.join('\n');
 }
