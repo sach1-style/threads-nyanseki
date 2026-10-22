@@ -1083,6 +1083,10 @@ function buildDayConvText(data, mask){
   L.push(''); L.push('【1往復だけ】');
   if(!ones.length) L.push('（なし）');
   else ones.forEach(c=> L.push(`${dc_cut(c.rootText,30)}｜${dc_name(c.otherName,mask,map)}｜1回${c.pinIntro?' 🔗ピン':''}`));
+  if((data.flatOther||[]).length){
+    L.push(''); L.push(`【相手の投稿への返信（${data.flatCount||data.flatOther.length}件・会話の往復はAPI制限で復元不可）】`);
+    data.flatOther.forEach(f=> L.push(`${f.pin?'🔗ピン ':''}${dc_cut(f.text,44)}`));
+  }
   if((data.fallbacks||[]).length){
     L.push(''); L.push('【会話が取得できなかった投稿（自分の返信数だけ）】');
     data.fallbacks.forEach(f=> L.push(`${dc_cut(f.rootText,30)}｜自分の返信 ${f.myReplyCount}回`));
@@ -1090,8 +1094,8 @@ function buildDayConvText(data, mask){
   if(data.failed>0){ L.push(''); L.push(`取得できなかった投稿：${data.failed}件`); }
   const dbg = data.debug||{};
   L.push('');
-  L.push(`デバッグ：/me/replies 取得 ${dbg.fetchedReplies??data.replyCount}件／振り分けできなかった返信 ${dbg.unresolvedCount??0}件`);
-  if((dbg.unresolved||[]).length){ dbg.unresolved.forEach(u=> L.push(` ・振り分け不可：${dc_cut(u.text,30)}`)); }
+  L.push(`デバッグ：/me/replies 取得 ${dbg.fetchedReplies??data.replyCount}件`);
+  if((dbg.convProbe||[]).length){ L.push(' 【convProbe（/{返信id}/conversation の反応）】'); dbg.convProbe.forEach(p=> L.push(` id:${p.id} count:${p.count??0} users:${JSON.stringify(p.users||[])}${p.err?' err:'+p.err:''}`)); }
   if((dbg.rawSamples||[]).length){ L.push(' 【生データsample】'); dbg.rawSamples.forEach(s=> L.push(` id:${s.id} listRoot:${JSON.stringify(s.listRoot)} listReplied:${JSON.stringify(s.listReplied)} getRoot:${JSON.stringify(s.getRoot)} getReplied:${JSON.stringify(s.getReplied)}${s.getErr?' err:'+s.getErr:''}`)); }
   L.push('━━━━━━━━━━');
   return L.join('\n');
