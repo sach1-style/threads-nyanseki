@@ -1,17 +1,9 @@
-// 指定した日（日本時間 0:00〜23:59）に自分がした返信を集め、
-// root_post（スレッドの元投稿）ごとに会話を組み立てて返す裏方。
+// 指定した日（日本時間 0:00〜23:59）に自分がした返信を集め、会話を1対1に組み立てて返す裏方。
 // 自分の投稿への返信も、相手の投稿への返信も含む。
-// ※他人の投稿は conversation が取れないことがあるので、その時は私の返信回数だけ数える。
+// root_post が空の返信（相手の投稿でよくある）は、replied_to から上へたどって元投稿を特定する。
 
 const BASE = 'https://graph.threads.net/v1.0';
 async function j(url){ const r = await fetch(url); return r.json(); }
-
-// ISOタイムスタンプ → 日本時間の YYYY-MM-DD
-function jstDateStr(ts){
-  const d = new Date(ts);
-  const g = new Date(d.getTime() + 9*3600*1000);
-  return `${g.getUTCFullYear()}-${String(g.getUTCMonth()+1).padStart(2,'0')}-${String(g.getUTCDate()).padStart(2,'0')}`;
-}
 function rootIdOf(rp){ if(!rp) return null; if(typeof rp === 'string') return rp; return rp.id || null; }
 
 export default async function handler(req, res){
@@ -35,46 +27,75 @@ export default async function handler(req, res){
     const me = await j(`${BASE}/me?fields=username&access_token=${t}`);
     const myName = me.username || null;
 
+    // 自分の投稿（own/other 判定＆本文表示用）。最大4ページ。
+    const myPosts = new Map(); // id -> {text, permalink}
+    {
+      let url = `${BASE}/me/threads?fields=id,text,permalink&limit=100&access_token=${t}`, pages = 0;
+      while(url && pages < 4){
+        const d = await j(url);
+        if(d.error) break;
+        for(const p of (d.data||[])) myPosts.set(String(p.id), { text: p.text||'', permalink: p.permalink||null });
+        url = d?.paging?.next || null; pages++;
+      }
+    }
+
     // 自分の返信をページ送りで取得（新しい順。対象日より古くなったら打ち切り）
     let myReplies = [];
-    let url = `${BASE}/me/replies?fields=id,text,timestamp,username,permalink,root_post{id},replied_to{id}&limit=100&access_token=${t}`;
-    let pages = 0, stop = false;
-    while(url && pages < 6 && !stop){
-      const d = await j(url);
-      if(d.error) throw new Error('返信一覧の取得エラー：' + JSON.stringify(d.error) + '（トークンに threads_read_replies が付いているか確認してください）');
-      const arr = Array.isArray(d.data) ? d.data : [];
-      for(const r of arr){
-        const tms = Date.parse(r.timestamp);
-        if(tms >= targetStart && tms < targetEnd) myReplies.push(r);
-        if(tms < targetStart) stop = true; // これ以降は古い投稿しかない
+    {
+      let url = `${BASE}/me/replies?fields=id,text,timestamp,username,permalink,root_post{id},replied_to{id}&limit=100&access_token=${t}`;
+      let pages = 0, stop = false;
+      while(url && pages < 8 && !stop){
+        const d = await j(url);
+        if(d.error) throw new Error('返信一覧の取得エラー：' + JSON.stringify(d.error) + '（トークンに threads_read_replies が付いているか確認してください）');
+        for(const r of (Array.isArray(d.data)?d.data:[])){
+          const tms = Date.parse(r.timestamp);
+          if(tms >= targetStart && tms < targetEnd) myReplies.push(r);
+          if(tms < targetStart) stop = true;
+        }
+        url = (!stop && d?.paging?.next) ? d.paging.next : null;
+        pages++;
       }
-      url = (!stop && d?.paging?.next) ? d.paging.next : null;
-      pages++;
     }
+    const fetchedReplies = myReplies.length;
 
-    // root_post ごとにまとめる
-    const groups = {};
-    for(const r of myReplies){
-      const rid = rootIdOf(r.root_post);
-      if(!rid) continue;
-      (groups[rid] = groups[rid] || []).push(r);
+    // --- 探索の共有キャッシュ＆安全上限 ---
+    const nodeCache = new Map(); // id -> {id,username,text,ts,parent}
+    let fetchBudget = 220;       // 追加探索で使えるAPI呼び出しの上限
+    const norm = (o, parentKnown)=>({ id:String(o.id), username:o.username||null, text:o.text||'', ts:Date.parse(o.timestamp)||0, parent: o.replied_to ? String(rootIdOf(o.replied_to)) : (parentKnown||null) });
+    async function getNode(id){
+      id = String(id);
+      if(nodeCache.has(id)) return nodeCache.get(id);
+      if(fetchBudget <= 0) return null;
+      fetchBudget--;
+      let o; try{ o = await j(`${BASE}/${id}?fields=id,username,text,timestamp,replied_to{id}&access_token=${t}`); }catch(e){ return null; }
+      if(!o || o.error) return null;
+      const m = norm(o); nodeCache.set(id, m); return m;
     }
-    const rootIds = Object.keys(groups);
-
-    const MAX_ROOTS = 40;
-    const useIds = rootIds.slice(0, MAX_ROOTS);
-    let failed = Math.max(0, rootIds.length - useIds.length); // 件数上限で見れなかった分
+    // 返信の root を解決（root_post が無ければ replied_to から上へたどる）
+    async function resolveRoot(r){
+      const direct = rootIdOf(r.root_post);
+      if(direct) return String(direct);
+      let pid = rootIdOf(r.replied_to);
+      let depth = 0;
+      while(pid && depth < 8){
+        const node = await getNode(pid);
+        if(!node) return String(pid);          // これ以上たどれない→暫定で親を root 扱い
+        if(!node.parent) return String(node.id); // 親なし＝元投稿
+        pid = node.parent; depth++;
+      }
+      return pid ? String(pid) : null;
+    }
 
     // ピン紹介（無料ガイド/ピン留め/ピン止め/URL）を自分の発言から判定
     const PIN_RE = /無料ガイド|ピン留め|ピン止め|ピンどめ|https?:\/\//;
     const hasPin = (messages)=> (messages||[]).some(m=> m.who==='me' && PIN_RE.test(m.text||''));
 
-    // items（{id,username,text,ts,parent}）から、相手ごとに1対1の会話へ整理する共通処理
+    // items から相手ごとに1対1の会話へ整理
     function buildConvs(items, rid, rootAuthor, rootOwnerIsMe, rootText, rootPermalink){
       const authorById = {}; items.forEach(m=> authorById[String(m.id)]=m.username);
       const parentAuthor = (m)=>{
         if(!m.parent) return null;
-        if(m.parent === String(rid)) return rootAuthor; // 元投稿への直返信（＝元投稿の作者宛て）
+        if(m.parent === String(rid)) return rootAuthor;
         return authorById[m.parent] || null;
       };
       const others = Array.from(new Set(items.map(m=>m.username).filter(u=> u && u!==myName)));
@@ -87,8 +108,7 @@ export default async function handler(req, res){
         });
         const myMsgs = exchange.filter(m=> m.username===myName);
         const uN = exchange.filter(m=> m.username===u).length;
-        if(myMsgs.length < 1 || uN < 1) continue; // やりとりが成立していない相手は除外
-        // 往復数＝「相手→わたし」の組の数（自分の返信のうち相手宛ての数）
+        if(myMsgs.length < 1 || uN < 1) continue;
         let round = myMsgs.filter(m=> parentAuthor(m)===u).length;
         if(round < 1) round = Math.min(myMsgs.length, uN);
         const thread = exchange.slice().sort((a,b)=> a.ts-b.ts)
@@ -99,29 +119,23 @@ export default async function handler(req, res){
     }
 
     // 相手の投稿：自分の返信を起点に、上（replied_to）と下（/replies）へたどって会話を組み立てる
-    let fetchBudget = 150; // 追加探索で使えるAPI呼び出しの安全上限
     async function walkOthersRoot(rid, myOnRoot, rootAuthor, rootText, rootPermalink){
       const collected = new Map();
-      const norm = (o, parentKnown)=>({ id:String(o.id), username:o.username||null, text:o.text||'', ts:Date.parse(o.timestamp)||0, parent: o.replied_to ? String(rootIdOf(o.replied_to)) : (parentKnown||null) });
       const add = (m)=>{ if(m && m.id && !collected.has(String(m.id))) collected.set(String(m.id), m); };
-      const seeds = myOnRoot.slice(0, 15);
-      // 上へ：相手の発言 → さらに上の自分 →…→ 元投稿 まで
+      const rootNode = nodeCache.get(String(rid)); if(rootNode) add(rootNode);
+      const seeds = myOnRoot.slice(0, 20).map(mr=> norm(mr));
+      seeds.forEach(add);
+      // 上へ
       for(const mr of seeds){
-        add(norm(mr));
-        let pid = mr.replied_to ? String(rootIdOf(mr.replied_to)) : null;
-        let depth = 0;
-        while(pid && pid !== String(rid) && depth < 6 && fetchBudget > 0){
+        let pid = mr.parent; let depth = 0;
+        while(pid && pid !== String(rid) && depth < 8 && fetchBudget > 0){
           if(collected.has(pid)){ pid = collected.get(pid).parent; depth++; continue; }
-          fetchBudget--;
-          let p; try{ p = await j(`${BASE}/${pid}?fields=id,text,username,timestamp,replied_to{id}&access_token=${t}`); }catch(e){ break; }
-          if(!p || p.error) break;
-          const pm = norm(p); add(pm);
-          pid = pm.parent; depth++;
+          const node = await getNode(pid); if(!node) break;
+          add(node); pid = node.parent; depth++;
         }
       }
-      // 下へ：自分の返信に相手がさらに返してくれた発言、その先の自分…
-      let frontier = seeds.map(m=> String(m.id));
-      let level = 0;
+      // 下へ
+      let frontier = seeds.map(m=> m.id); let level = 0;
       while(frontier.length && level < 4 && fetchBudget > 0){
         const next = [];
         for(const id of frontier){
@@ -129,58 +143,59 @@ export default async function handler(req, res){
           fetchBudget--;
           let rr; try{ rr = await j(`${BASE}/${id}/replies?fields=id,text,username,timestamp,replied_to{id}&limit=50&access_token=${t}`); }catch(e){ continue; }
           if(!rr || rr.error || !Array.isArray(rr.data)) continue;
-          for(const c of rr.data){ add(norm(c, id)); next.push(String(c.id)); }
+          for(const c of rr.data){ const cm = norm(c, id); add(cm); next.push(cm.id); }
         }
         frontier = next; level++;
       }
       return buildConvs(Array.from(collected.values()), rid, rootAuthor, false, rootText, rootPermalink);
     }
 
-    const conversations = []; // {rootId, rootOwnerIsMe, rootText, rootPermalink, otherName, round, messages, pinIntro}
-    const fallbacks = [];     // {rootId, rootText, rootOwnerIsMe, myReplyCount}
-    let selfPostReplyCount = 0, otherPostReplyCount = 0;
+    // --- 返信を root ごとに振り分け（自分の投稿 / 相手の投稿） ---
+    const ownGroups = {}, otherGroups = {};
+    const unresolved = []; // 振り分けできなかった返信（デバッグ用）
+    for(const r of myReplies){
+      const rid = await resolveRoot(r);
+      if(!rid){ unresolved.push({ root: rootIdOf(r.root_post)||rootIdOf(r.replied_to)||null, text: (r.text||'').replace(/\n/g,' ').slice(0,30) }); continue; }
+      if(myPosts.has(String(rid))) (ownGroups[rid] = ownGroups[rid] || []).push(r);
+      else (otherGroups[rid] = otherGroups[rid] || []).push(r);
+    }
+    const selfPostReplyCount = Object.values(ownGroups).reduce((a,x)=> a+x.length, 0);
+    const otherPostReplyCount = Object.values(otherGroups).reduce((a,x)=> a+x.length, 0);
 
-    for(const rid of useIds){
-      const myOnRoot = groups[rid];
-      // 元投稿のメタ（作者・冒頭）
-      let rootOwnerIsMe = null, rootText = '', rootPermalink = null, rootAuthorName = null;
+    const conversations = [];
+    const fallbacks = [];
+    let failed = unresolved.length;
+
+    // 自分の投稿：conversation 方式（軽い）
+    for(const rid of Object.keys(ownGroups)){
+      const meta = myPosts.get(String(rid)) || {};
+      let conv = null, convOk = false;
       try{
-        const rp = await j(`${BASE}/${rid}?fields=id,username,text,permalink&access_token=${t}`);
-        if(!rp.error){ rootOwnerIsMe = (myName && rp.username === myName); rootText = rp.text || ''; rootPermalink = rp.permalink || null; rootAuthorName = rp.username || null; }
-      }catch(e){ /* 取れなくても続行 */ }
+        let cmsgs = [], curl = `${BASE}/${rid}/conversation?fields=id,username,text,timestamp,replied_to{id}&limit=100&access_token=${t}`, cp = 0, convErr = false;
+        while(curl && cp < 3){
+          const cd = await j(curl);
+          if(cd.error){ convErr = true; break; }
+          if(Array.isArray(cd.data)) cmsgs.push(...cd.data);
+          curl = cd?.paging?.next || null; cp++;
+        }
+        if(!convErr){ conv = cmsgs; convOk = true; }
+      }catch(e){ convOk = false; }
+      if(!convOk){ fallbacks.push({ rootId: rid, rootText: meta.text||'', rootOwnerIsMe: true, myReplyCount: ownGroups[rid].length }); failed++; continue; }
+      const items = conv.map(m=>({ id:String(m.id), username:m.username, text:m.text||'', ts:Date.parse(m.timestamp)||0, parent: m.replied_to ? String(rootIdOf(m.replied_to)) : null }));
+      const convs = buildConvs(items, rid, myName, true, meta.text||'', meta.permalink||null);
+      if(!convs.length){ fallbacks.push({ rootId: rid, rootText: meta.text||'', rootOwnerIsMe: true, myReplyCount: ownGroups[rid].length }); continue; }
+      for(const c of convs){ c.pinIntro = hasPin(c.messages); conversations.push(c); }
+    }
 
-      // 返信数の内訳（自分の投稿 / 相手の投稿）
-      if(rootOwnerIsMe === true) selfPostReplyCount += myOnRoot.length;
-      else otherPostReplyCount += myOnRoot.length;
-
-      let convsForRoot = [];
-      if(rootOwnerIsMe === true){
-        // 自分の投稿：conversation 方式（軽い）
-        let conv = null, convOk = false;
-        try{
-          let cmsgs = [], curl = `${BASE}/${rid}/conversation?fields=id,username,text,timestamp,replied_to{id}&limit=100&access_token=${t}`, cp = 0, convErr = false;
-          while(curl && cp < 3){
-            const cd = await j(curl);
-            if(cd.error){ convErr = true; break; }
-            if(Array.isArray(cd.data)) cmsgs.push(...cd.data);
-            curl = cd?.paging?.next || null; cp++;
-          }
-          if(!convErr){ conv = cmsgs; convOk = true; }
-        }catch(e){ convOk = false; }
-        if(!convOk){ fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe, myReplyCount: myOnRoot.length }); failed++; continue; }
-        const items = conv.map(m=>({ id:String(m.id), username:m.username, text:m.text||'', ts:Date.parse(m.timestamp)||0, parent: m.replied_to ? String(rootIdOf(m.replied_to)) : null }));
-        convsForRoot = buildConvs(items, rid, myName, true, rootText, rootPermalink);
-      } else {
-        // 相手の投稿：たどる方式（上限つき）
-        if(fetchBudget <= 0){ failed++; fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe, myReplyCount: myOnRoot.length }); continue; }
-        convsForRoot = await walkOthersRoot(rid, myOnRoot, rootAuthorName, rootText, rootPermalink);
-      }
-
-      if(!convsForRoot.length){
-        fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe, myReplyCount: myOnRoot.length });
-        continue;
-      }
-      for(const c of convsForRoot){ c.pinIntro = hasPin(c.messages); conversations.push(c); }
+    // 相手の投稿：たどる方式（上限つき）
+    for(const rid of Object.keys(otherGroups)){
+      const myOnRoot = otherGroups[rid];
+      const rootNode = await getNode(rid); // 相手の作者名・本文
+      const rootAuthorName = rootNode ? rootNode.username : null;
+      const rootText = rootNode ? rootNode.text : '';
+      const convs = await walkOthersRoot(rid, myOnRoot, rootAuthorName, rootText, null);
+      if(!convs.length){ fallbacks.push({ rootId: rid, rootText, rootOwnerIsMe: false, myReplyCount: myOnRoot.length }); continue; }
+      for(const c of convs){ c.pinIntro = hasPin(c.messages); conversations.push(c); }
     }
 
     // 判定・集計
@@ -199,6 +214,7 @@ export default async function handler(req, res){
       pinIntroCount,
       conversations, fallbacks,
       failed,
+      debug: { fetchedReplies, unresolvedCount: unresolved.length, unresolved: unresolved.slice(0, 40) },
     });
   }catch(e){
     return res.status(500).json({ error: String(e.message || e) });
