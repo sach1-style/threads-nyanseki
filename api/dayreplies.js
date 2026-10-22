@@ -165,19 +165,20 @@ export default async function handler(req, res){
 
     // --- 返信を root ごとに振り分け（自分の投稿 / 相手の投稿） ---
     const ownGroups = {}, otherGroups = {};
-    const unresolved = []; // 振り分けできなかった返信（デバッグ用）
+    const unresolved = []; // デバッグ用
+    const flatOther = [];  // 相手の投稿への返信で、元投稿がAPIから取れないぶん（会話復元は不可）
     for(const r of myReplies){
       const rid = await resolveRoot(r);
-      if(!rid){ unresolved.push({ root: rootIdOf(r.root_post)||rootIdOf(r.replied_to)||null, text: (r.text||'').replace(/\n/g,' ').slice(0,30) }); continue; }
+      if(!rid){ unresolved.push({ root: null, text: (r.text||'').replace(/\n/g,' ').slice(0,30) }); flatOther.push(r); continue; }
       if(myPosts.has(String(rid))) (ownGroups[rid] = ownGroups[rid] || []).push(r);
       else (otherGroups[rid] = otherGroups[rid] || []).push(r);
     }
     const selfPostReplyCount = Object.values(ownGroups).reduce((a,x)=> a+x.length, 0);
-    const otherPostReplyCount = Object.values(otherGroups).reduce((a,x)=> a+x.length, 0);
+    const otherPostReplyCount = Object.values(otherGroups).reduce((a,x)=> a+x.length, 0) + flatOther.length;
 
     const conversations = [];
     const fallbacks = [];
-    let failed = unresolved.length;
+    let failed = 0;
 
     // 自分の投稿：conversation 方式（軽い）
     for(const rid of Object.keys(ownGroups)){
@@ -211,12 +212,32 @@ export default async function handler(req, res){
       for(const c of convs){ c.pinIntro = hasPin(c.messages); conversations.push(c); }
     }
 
+    // 相手の投稿への返信（元投稿がAPIで取れないぶん）→ カウント＆ピン判定＆一覧。会話の往復は復元不可。
+    const flatList = [];
+    let flatPinCount = 0;
+    let convProbe = null;
+    for(let i=0; i<flatOther.length; i++){
+      const r = flatOther[i];
+      const pin = PIN_RE.test(r.text||'');
+      if(pin) flatPinCount++;
+      flatList.push({ text:(r.text||'').replace(/\n/g,' ').slice(0,44), pin });
+      // 最初の2件だけ /{返信id}/conversation を試す（スレッドが取れるか確認）
+      if(i < 2 && fetchBudget > 0){
+        fetchBudget--;
+        try{
+          const cd = await j(`${BASE}/${r.id}/conversation?fields=id,username,text,timestamp&limit=20&access_token=${t}`);
+          if(!convProbe) convProbe = [];
+          convProbe.push({ id:String(r.id), err: cd.error?JSON.stringify(cd.error):null, count: Array.isArray(cd.data)?cd.data.length:0, users: Array.isArray(cd.data)?Array.from(new Set(cd.data.map(m=>m.username).filter(Boolean))).slice(0,6):[] });
+        }catch(e){ if(!convProbe) convProbe = []; convProbe.push({ id:String(r.id), err:String(e.message||e) }); }
+      }
+    }
+
     // 判定・集計
     const rally = conversations.filter(c=> c.round>=3);
     const almost = conversations.filter(c=> c.round===2);
     const ones  = conversations.filter(c=> c.round===1);
-    const people = new Set(conversations.map(c=> c.otherName)).size;
-    const pinIntroCount = conversations.filter(c=> c.pinIntro).length;
+    const people = new Set(conversations.map(c=> c.otherName)).size; // 往復が取れた会話の人数
+    const pinIntroCount = conversations.filter(c=> c.pinIntro).length + flatPinCount;
 
     return res.status(200).json({
       date, me: myName,
@@ -226,8 +247,9 @@ export default async function handler(req, res){
       rallyCount: rally.length, almostCount: almost.length, oneCount: ones.length,
       pinIntroCount,
       conversations, fallbacks,
+      flatOther: flatList, flatCount: flatOther.length,
       failed,
-      debug: { fetchedReplies, unresolvedCount: unresolved.length, unresolved: unresolved.slice(0, 40), rawSamples },
+      debug: { fetchedReplies, unresolvedCount: unresolved.length, convProbe, rawSamples },
     });
   }catch(e){
     return res.status(500).json({ error: String(e.message || e) });
