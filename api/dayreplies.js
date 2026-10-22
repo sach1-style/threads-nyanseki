@@ -42,7 +42,7 @@ export default async function handler(req, res){
     // 自分の返信をページ送りで取得（新しい順。対象日より古くなったら打ち切り）
     let myReplies = [];
     {
-      let url = `${BASE}/me/replies?fields=id,text,timestamp,username,permalink,root_post{id},replied_to{id}&limit=100&access_token=${t}`;
+      let url = `${BASE}/me/replies?fields=id,text,timestamp,username,permalink,root_post,replied_to,is_reply&limit=100&access_token=${t}`;
       let pages = 0, stop = false;
       while(url && pages < 8 && !stop){
         const d = await j(url);
@@ -67,15 +67,29 @@ export default async function handler(req, res){
       if(nodeCache.has(id)) return nodeCache.get(id);
       if(fetchBudget <= 0) return null;
       fetchBudget--;
-      let o; try{ o = await j(`${BASE}/${id}?fields=id,username,text,timestamp,replied_to{id}&access_token=${t}`); }catch(e){ return null; }
+      let o; try{ o = await j(`${BASE}/${id}?fields=id,username,text,timestamp,replied_to&access_token=${t}`); }catch(e){ return null; }
       if(!o || o.error) return null;
       const m = norm(o); nodeCache.set(id, m); return m;
     }
     // 返信の root を解決（root_post が無ければ replied_to から上へたどる）
+    const rawSamples = []; // デバッグ：一覧で root/parent が空だった返信の生データ
     async function resolveRoot(r){
-      const direct = rootIdOf(r.root_post);
-      if(direct) return String(direct);
+      let direct = rootIdOf(r.root_post);
+      if(direct){ r._parent = rootIdOf(r.replied_to) || direct; return String(direct); }
       let pid = rootIdOf(r.replied_to);
+      // 一覧に root_post も replied_to も無い → その返信を単体GETで取り直す
+      if(!pid){
+        let self = null;
+        if(fetchBudget > 0){ fetchBudget--; try{ self = await j(`${BASE}/${r.id}?fields=id,root_post,replied_to&access_token=${t}`); }catch(e){ self = { error:String(e.message||e) }; } }
+        if(rawSamples.length < 3){ rawSamples.push({ id:String(r.id), listRoot:(r.root_post??null), listReplied:(r.replied_to??null), getRoot:(self&&!self.error?(self.root_post??null):null), getReplied:(self&&!self.error?(self.replied_to??null):null), getErr:(self&&self.error?JSON.stringify(self.error):null) }); }
+        if(self && !self.error){
+          direct = rootIdOf(self.root_post);
+          pid = rootIdOf(self.replied_to);
+          r._parent = pid || direct || null;
+          if(direct) return String(direct);
+        }
+      }
+      if(pid && !r._parent) r._parent = pid;
       let depth = 0;
       while(pid && depth < 8){
         const node = await getNode(pid);
@@ -101,16 +115,15 @@ export default async function handler(req, res){
       const others = Array.from(new Set(items.map(m=>m.username).filter(u=> u && u!==myName)));
       const out = [];
       for(const u of others){
-        const exchange = items.filter(m=>{
-          if(m.username === u){ const pa = parentAuthor(m); return pa === myName || m.parent === String(rid) || pa === null; }
-          if(m.username === myName){ return parentAuthor(m) === u; }
-          return false;
-        });
+        // 自分の発言で、uのコメントへの返信／元投稿への返信（元投稿の作者がu、または作者不明）
+        const myToU = (m)=> m.username===myName && ( parentAuthor(m)===u || (m.parent===String(rid) && (rootAuthor==null || rootAuthor===u)) );
+        // uの発言で、元投稿への返信／自分への返信／親不明（トップコメント）
+        const uMsg = (m)=>{ if(m.username!==u) return false; const pa=parentAuthor(m); return pa===myName || m.parent===String(rid) || pa===null; };
+        const exchange = items.filter(m=> myToU(m) || uMsg(m));
         const myMsgs = exchange.filter(m=> m.username===myName);
         const uN = exchange.filter(m=> m.username===u).length;
         if(myMsgs.length < 1 || uN < 1) continue;
-        let round = myMsgs.filter(m=> parentAuthor(m)===u).length;
-        if(round < 1) round = Math.min(myMsgs.length, uN);
+        const round = myMsgs.length; // 「相手→わたし」の組の数＝自分がuに返した回数
         const thread = exchange.slice().sort((a,b)=> a.ts-b.ts)
           .map(m=>({ who: m.username===myName ? 'me':'other', text: (m.text||'').slice(0,200) }));
         out.push({ rootId: rid, rootOwnerIsMe, rootText, rootPermalink, otherName: u, round, messages: thread });
@@ -123,7 +136,7 @@ export default async function handler(req, res){
       const collected = new Map();
       const add = (m)=>{ if(m && m.id && !collected.has(String(m.id))) collected.set(String(m.id), m); };
       const rootNode = nodeCache.get(String(rid)); if(rootNode) add(rootNode);
-      const seeds = myOnRoot.slice(0, 20).map(mr=> norm(mr));
+      const seeds = myOnRoot.slice(0, 20).map(mr=> norm(mr, mr._parent));
       seeds.forEach(add);
       // 上へ
       for(const mr of seeds){
@@ -141,7 +154,7 @@ export default async function handler(req, res){
         for(const id of frontier){
           if(fetchBudget <= 0) break;
           fetchBudget--;
-          let rr; try{ rr = await j(`${BASE}/${id}/replies?fields=id,text,username,timestamp,replied_to{id}&limit=50&access_token=${t}`); }catch(e){ continue; }
+          let rr; try{ rr = await j(`${BASE}/${id}/replies?fields=id,text,username,timestamp,replied_to&limit=50&access_token=${t}`); }catch(e){ continue; }
           if(!rr || rr.error || !Array.isArray(rr.data)) continue;
           for(const c of rr.data){ const cm = norm(c, id); add(cm); next.push(cm.id); }
         }
@@ -171,7 +184,7 @@ export default async function handler(req, res){
       const meta = myPosts.get(String(rid)) || {};
       let conv = null, convOk = false;
       try{
-        let cmsgs = [], curl = `${BASE}/${rid}/conversation?fields=id,username,text,timestamp,replied_to{id}&limit=100&access_token=${t}`, cp = 0, convErr = false;
+        let cmsgs = [], curl = `${BASE}/${rid}/conversation?fields=id,username,text,timestamp,replied_to&limit=100&access_token=${t}`, cp = 0, convErr = false;
         while(curl && cp < 3){
           const cd = await j(curl);
           if(cd.error){ convErr = true; break; }
@@ -214,7 +227,7 @@ export default async function handler(req, res){
       pinIntroCount,
       conversations, fallbacks,
       failed,
-      debug: { fetchedReplies, unresolvedCount: unresolved.length, unresolved: unresolved.slice(0, 40) },
+      debug: { fetchedReplies, unresolvedCount: unresolved.length, unresolved: unresolved.slice(0, 40), rawSamples },
     });
   }catch(e){
     return res.status(500).json({ error: String(e.message || e) });
