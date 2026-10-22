@@ -1092,6 +1092,7 @@ function buildDayConvText(data, mask){
   L.push('');
   L.push(`デバッグ：/me/replies 取得 ${dbg.fetchedReplies??data.replyCount}件／振り分けできなかった返信 ${dbg.unresolvedCount??0}件`);
   if((dbg.unresolved||[]).length){ dbg.unresolved.forEach(u=> L.push(` ・振り分け不可：${dc_cut(u.text,30)}`)); }
+  if((dbg.rawSamples||[]).length){ L.push(' 【生データsample】'); dbg.rawSamples.forEach(s=> L.push(` id:${s.id} listRoot:${JSON.stringify(s.listRoot)} listReplied:${JSON.stringify(s.listReplied)} getRoot:${JSON.stringify(s.getRoot)} getReplied:${JSON.stringify(s.getReplied)}${s.getErr?' err:'+s.getErr:''}`)); }
   L.push('━━━━━━━━━━');
   return L.join('\n');
 }
